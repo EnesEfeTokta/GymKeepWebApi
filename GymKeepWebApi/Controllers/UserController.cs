@@ -1,59 +1,164 @@
-﻿using GymKeepWebApi.Models;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using GymKeepWebApi.Models; // Model namespace'iniz
+using System.Linq;
+using System.Threading.Tasks;
 using System.ComponentModel.DataAnnotations;
-using System.Collections.Generic; // List<Claim> için
-using System.Security.Claims; // Claims için eklendi
-using Microsoft.AspNetCore.Authentication; // SignInAsync, SignOutAsync için eklendi
-using Microsoft.AspNetCore.Authentication.Cookies; // Cookie şeması için eklendi
-using Microsoft.AspNetCore.Authorization; // [Authorize], [AllowAnonymous] için eklendi
 
 [ApiController]
 [Route("api/[controller]")]
 public class UserController : ControllerBase
 {
-    private readonly MyDbContext _context;
+    private readonly MyDbContext _context; // DbContext'inizin adı
 
-    // IConfiguration genellikle JWT için gerekir, Cookie Auth için zorunlu değil.
     public UserController(MyDbContext context)
     {
         _context = context;
     }
 
-    public record UserDto(int Id, string Username, string Email, DateTime CreatedAt);
+    // --- Mevcut CRUD İşlemleri (Önceki cevaptan) ---
 
-    public record RegisterModel(
-        [Required][StringLength(50)] string Username,
-        [Required][EmailAddress][StringLength(150)] string Email,
-        // Öneri: Şifre için minimum uzunluk ekleyin
-        [Required][MinLength(6)] string Password
-        );
-    public record LoginModel([Required] string Username, [Required] string Password);
-
-    [HttpPost("register")]
-    [AllowAnonymous] // Kayıt için kimlik doğrulaması gerekmez
-    public async Task<IActionResult> Register([FromBody] RegisterModel model)
+    // GET: api/users
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetUsers()
     {
-        if (await _context.Users.AnyAsync(u => u.Username == model.Username))
+        return await _context.Users
+            .Select(u => new UserResponseDto // DTO'ya dönüştür
+            {
+                UserId = u.UserId,
+                Username = u.Username,
+                Email = u.Email,
+                CreatedAt = u.CreatedAt,
+                UpdatedAt = u.UpdatedAt
+            })
+            .ToListAsync();
+    }
+
+    // GET: api/users/{id}
+    [HttpGet("{id}")]
+    public async Task<ActionResult<UserResponseDto>> GetUser(int id)
+    {
+        var user = await _context.Users.FindAsync(id);
+
+        if (user == null)
         {
-            return BadRequest(new { Message = "Bu kullanıcı adı zaten alınmış." });
-        }
-        if (await _context.Users.AnyAsync(u => u.Email == model.Email))
-        {
-            return BadRequest(new { Message = "Bu e-posta adresi zaten kullanılıyor." });
+            return NotFound();
         }
 
-        // --- GÜVENLİK ÖNERİSİ: Şifreyi Hash'leyin! ---
-        // Düz metin saklamak yerine hash kullanın. User modelindeki Password alanını PasswordHash yapın.
-        // string passwordHash = BCrypt.Net.BCrypt.HashPassword(model.Password);
-        // --- GÜVENLİK ÖNERİSİ SONU ---
+        // DTO'ya dönüştürerek parolayı gönderme
+        var userDto = new UserResponseDto
+        {
+            UserId = user.UserId,
+            Username = user.Username,
+            Email = user.Email,
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt
+        };
+        return userDto;
+    }
 
+    // PUT: api/users/{id} (Güncelleme)
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateUser(int id, User user) // Güncelleme için de DTO kullanmak daha iyi
+    {
+        if (id != user.UserId)
+        {
+            return BadRequest("ID mismatch.");
+        }
+
+        var existingUser = await _context.Users.FindAsync(id);
+        if (existingUser == null)
+        {
+            return NotFound();
+        }
+
+        // Kullanıcı adı/e-posta değiştiriliyorsa unique kontrolü yapılmalı
+        if (existingUser.Username != user.Username && await _context.Users.AnyAsync(u => u.Username == user.Username && u.UserId != id))
+        {
+            return BadRequest("Username already exists.");
+        }
+        if (existingUser.Email != user.Email && await _context.Users.AnyAsync(u => u.Email == user.Email && u.UserId != id))
+        {
+            return BadRequest("Email already exists.");
+        }
+
+
+        existingUser.Username = user.Username;
+        existingUser.Email = user.Email;
+        existingUser.UpdatedAt = DateTime.UtcNow;
+
+        // Parolayı burada güncelleME! Ayrı ve güvenli bir endpoint kullanın.
+        _context.Entry(existingUser).Property(x => x.Password).IsModified = false;
+        _context.Entry(existingUser).Property(x => x.CreatedAt).IsModified = false; // Oluşturma tarihi değişmez
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!await UserExists(id)) return NotFound(); else throw;
+        }
+        catch (DbUpdateException ex)
+        {
+            return BadRequest($"Failed to update user. Potential duplicate username or email. Error: {ex.InnerException?.Message ?? ex.Message}");
+        }
+
+        return NoContent();
+    }
+
+    // DELETE: api/users/{id}
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteUser(int id)
+    {
+        var user = await _context.Users.FindAsync(id);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        try
+        {
+            _context.Users.Remove(user);
+            await _context.SaveChangesAsync(); // İlişkili verilerin silinmesi (Cascade) DbContext'te ayarlandıysa gerçekleşir.
+        }
+        catch (DbUpdateException ex) // Cascade delete yoksa ve FK varsa hata verebilir
+        {
+            return BadRequest($"Cannot delete user. They might have associated data (plans, sessions, etc.). Error: {ex.InnerException?.Message ?? ex.Message}");
+        }
+
+        return NoContent();
+    }
+
+
+    // --- YENİ ENDPOINT'LER ---
+
+    // POST: api/users/register
+    [HttpPost("register")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<UserResponseDto>> RegisterUser(RegisterRequestDto registerDto)
+    {
+        // Model validasyonu (Required, EmailAddress, StringLength vb.) otomatik yapılır.
+
+        // Kullanıcı adı veya e-posta zaten var mı?
+        if (await _context.Users.AnyAsync(u => u.Username == registerDto.Username))
+        {
+            // ModelState.AddModelError("Username", "Username already exists."); // Daha detaylı hata için
+            return BadRequest("Username already exists.");
+        }
+        if (await _context.Users.AnyAsync(u => u.Email == registerDto.Email))
+        {
+            // ModelState.AddModelError("Email", "Email already exists.");
+            return BadRequest("Email already exists.");
+        }
+
+        // Yeni kullanıcı oluştur
         var user = new User
         {
-            Username = model.Username,
-            Email = model.Email,
-            // PasswordHash = passwordHash, // Hash'lenmiş şifre
-            Password = model.Password, // <<< GÜVENLİ DEĞİL! Geçici olarak bırakıldı.
+            Username = registerDto.Username,
+            Email = registerDto.Email,
+            Password = registerDto.Password, // << GÜVENSİZ!!
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -61,143 +166,97 @@ public class UserController : ControllerBase
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        var userDto = new UserDto(user.Id, user.Username, user.Email, user.CreatedAt);
+        // Başarılı yanıtı oluştur (parola olmadan DTO ile)
+        var userDto = new UserResponseDto
+        {
+            UserId = user.UserId,
+            Username = user.Username,
+            Email = user.Email,
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt
+        };
 
-        // Direkt başarılı mesajı ve kullanıcı bilgisini dönelim.
-        return Ok(new { Message = "Kayıt başarılı.", User = userDto });
+        // Yeni oluşturulan kaynağın URL'si ile 201 Created döndür
+        return CreatedAtAction(nameof(GetUser), new { id = user.UserId }, userDto);
     }
 
+    // POST: api/users/login
     [HttpPost("login")]
-    [AllowAnonymous] // Giriş için kimlik doğrulaması gerekmez
-    public async Task<IActionResult> Login([FromBody] LoginModel model)
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<UserResponseDto>> LoginUser(LoginRequestDto loginDto)
     {
-        // Kullanıcıyı bul
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == model.Username);
-
-        // --- GÜVENLİK ÖNERİSİ: Hash Karşılaştırması ---
-        // Düz metin karşılaştırması yerine hash'i doğrulayın
-        // if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash)) // User modelinde PasswordHash varsa
-        // --- GÜVENLİK ÖNERİSİ SONU ---
-
-        // <<< GÜVENLİ DEĞİL! Geçici olarak düz metin karşılaştırması bırakıldı.>>>
-        if (user == null || user.Password != model.Password)
-        {
-            return Unauthorized(new { Message = "Kullanıcı adı veya şifre yanlış." });
-        }
-
-        // --- Cookie Authentication ile Giriş Yapma ---
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), // Kullanıcı ID'si (ÇOK ÖNEMLİ)
-            new Claim(ClaimTypes.Name, user.Username), // Kullanıcı adı
-            new Claim(ClaimTypes.Email, user.Email),
-            // İleride rolleriniz olursa: new Claim(ClaimTypes.Role, "Admin"), new Claim(ClaimTypes.Role, "User")
-        };
-
-        var claimsIdentity = new ClaimsIdentity(
-            claims, CookieAuthenticationDefaults.AuthenticationScheme); // Şema adını doğru yazın
-
-        var authProperties = new AuthenticationProperties
-        {
-            IsPersistent = true, // Tarayıcı kapanınca cookie silinmesin (isteğe bağlı)
-            AllowRefresh = true, // Sliding expiration için
-            // ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(60) // İsterseniz özel süre belirleyebilirsiniz (Program.cs'teki ile tutarlı olmalı)
-        };
-
-        // Kimlik doğrulama cookie'sini oluştur ve yanıta ekle
-        await HttpContext.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(claimsIdentity),
-            authProperties);
-        // --- Giriş Yapma Bitiş ---
-
-        var userDto = new UserDto(user.Id, user.Username, user.Email, user.CreatedAt);
-        return Ok(new { Message = "Giriş başarılı.", User = userDto }); // Token yerine kullanıcı bilgisi dönülebilir
-    }
-
-    [HttpPost("logout")]
-    [Authorize] // Çıkış yapmak için giriş yapmış olmak gerekir
-    public async Task<IActionResult> Logout() // async Task<IActionResult> olarak değiştirildi
-    {
-        // Kimlik doğrulama cookie'sini sil
-        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-
-        // Eğer HttpContext.Session başka veriler için kullanılıyorsa onu da temizleyebilirsiniz.
-        // HttpContext.Session.Clear();
-
-        return Ok(new { Message = "Çıkış başarılı." });
-    }
-
-
-    [HttpGet("me")]
-    [Authorize] // Bu endpoint artık kimlik doğrulaması gerektirir
-    public async Task<IActionResult> GetCurrentUser() // Metot adı eski haline getirildi
-    {
-        // [Authorize] attribute'u sayesinde HttpContext.User otomatik olarak doldurulur.
-        // Session'dan okumaya gerek YOKTUR.
-        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier); // Cookie'deki claim'den ID'yi al
-
-        if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out int userId))
-        {
-            // Bu durum normalde [Authorize] filtresi nedeniyle olmamalı, ama bir sorun varsa buraya düşebilir.
-            return Unauthorized(new { Message = "Geçersiz veya eksik kimlik bilgisi." });
-        }
-
-        // Veritabanından kullanıcıyı bul
-        var user = await _context.Users.FindAsync(userId);
+        // Kullanıcıyı username ile bul
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == loginDto.Username);
 
         if (user == null)
         {
-            // Cookie geçerli ama kullanıcı DB'de yok (silinmiş olabilir)
-            // Güvenlik için çıkış yaptırmak iyi bir pratik olabilir: await HttpContext.SignOutAsync(...)
-            return NotFound(new { Message = "Kullanıcı bulunamadı." });
+            // Kullanıcı bulunamadıysa veya parola yanlışsa aynı hatayı dönmek daha güvenlidir
+            // (kullanıcı adı var mı yok mu bilgisini sızdırmamak için)
+            return Unauthorized("Invalid username or password.");
         }
 
-        // Hassas bilgi (şifre) göndermemek için DTO kullan
-        var userDto = new UserDto(user.Id, user.Username, user.Email, user.CreatedAt);
-        return Ok(userDto);
+        // !!! GÜVENLİK RİSKİ: PAROLA KONTROLÜ HASH İLE YAPILMALI !!!
+        // Gerçek uygulamada: if (!VerifyPasswordHash(loginDto.Password, user.Password))
+        if (user.Password != loginDto.Password) // << GÜVENSİZ!!
+        {
+            return Unauthorized("Invalid username or password.");
+        }
+
+        // Başarılı giriş - Kullanıcı bilgilerini DTO ile döndür
+        var userDto = new UserResponseDto
+        {
+            UserId = user.UserId,
+            Username = user.Username,
+            Email = user.Email,
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt
+        };
+
+        return Ok(userDto); // Başarılı girişte 200 OK
     }
 
-    [HttpGet] // /api/user
-    [Authorize] // Artık kimlik doğrulaması gerektirir (veya Rol bazlı)
-    // [Authorize(Roles = "Admin")] // Sadece Admin'ler listelesin isterseniz
-    public async Task<ActionResult<IEnumerable<UserDto>>> GetAllUsers()
+
+    // --- Helper Metotlar ---
+    private async Task<bool> UserExists(int id)
     {
-        // Session kontrolüne gerek YOKTUR. [Authorize] bunu halleder.
-        try
-        {
-            var users = await _context.Users
-                                     .Select(u => new UserDto(u.Id, u.Username, u.Email, u.CreatedAt))
-                                     .ToListAsync();
-            return Ok(users);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error getting all users: {ex.Message}");
-            return StatusCode(500, new { Message = "Kullanıcılar alınırken bir sunucu hatası oluştu." });
-        }
+        return await _context.Users.AnyAsync(e => e.UserId == id);
     }
+}
 
-    [HttpGet("test-db")]
-    [AllowAnonymous] // Bu endpoint kimlik doğrulaması gerektirmez
-    public async Task<IActionResult> TestConnection()
-    {
-        try
-        {
-            var canConnect = await _context.Database.CanConnectAsync();
-            if (canConnect)
-            {
-                return Ok(new { Message = "Veritabanı bağlantısı başarılı." });
-            }
-            else
-            {
-                return StatusCode(503, new { Message = "Veritabanına bağlanılamadı." });
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"DB Connection Error: {ex.Message}");
-            return StatusCode(500, new { Message = "Veritabanı bağlantısı test edilirken bir sunucu hatası oluştu." });
-        }
-    }
+public class RegisterRequestDto
+{
+    [Required]
+    [StringLength(50, MinimumLength = 3)]
+    public string Username { get; set; } = null!;
+
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = null!;
+
+    [Required]
+    [StringLength(100, MinimumLength = 6)] // Örnek uzunluk kısıtlaması
+    public string Password { get; set; } = null!;
+}
+
+// Giriş isteği için
+public class LoginRequestDto
+{
+    [Required]
+    public string Username { get; set; } = null!; // Veya Email ile giriş yapılacaksa Email
+
+    [Required]
+    public string Password { get; set; } = null!;
+}
+
+// Kullanıcı bilgisi döndürmek için (parola olmadan)
+public class UserResponseDto
+{
+    public int UserId { get; set; }
+    public string Username { get; set; } = null!;
+    public string Email { get; set; } = null!;
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    // İhtiyaç varsa diğer güvenli alanlar eklenebilir
 }

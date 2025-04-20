@@ -1,13 +1,14 @@
-﻿using GymKeepWebApi.Models;
-using GymKeepWebApi.Dtos;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
+using GymKeepWebApi.Models; // Modellerinizin namespace'i
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations; // DTO için Range gibi Attribute'lar
 
 [ApiController]
-[Route("api/workoutplans")]
-[Authorize] // Bu controller'daki tüm işlemler için giriş yapmış olmak gerekir
+// Rota kullanıcı bazlı: /api/users/{userId}/WorkoutPlan (Controller adı 'WorkoutPlanController' olduğu için)
+[Route("api/users/{userId}/[controller]")]
 public class WorkoutPlanController : ControllerBase
 {
     private readonly MyDbContext _context;
@@ -17,251 +18,376 @@ public class WorkoutPlanController : ControllerBase
         _context = context;
     }
 
-    // Helper metot: Giriş yapmış kullanıcının ID'sini alır
-    private int GetCurrentUserId()
-    {
-        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (int.TryParse(userIdString, out int userId))
-        {
-            return userId;
-        }
-        // Bu durum normalde [Authorize] nedeniyle olmamalı
-        throw new UnauthorizedAccessException("Kullanıcı kimliği alınamadı.");
-    }
-
-    // GET: api/workoutplans
-    // Giriş yapmış kullanıcının planlarını listeler
+    // GET: api/users/{userId}/WorkoutPlan
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<WorkoutPlanSummaryDto>>> GetMyWorkoutPlans()
+    public async Task<ActionResult<IEnumerable<WorkoutPlan>>> GetWorkoutPlans(int userId)
     {
-        var userId = GetCurrentUserId();
-        var plans = await _context.WorkoutPlans
-            .Where(wp => wp.UserId == userId)
-            .Select(wp => new WorkoutPlanSummaryDto(
-                wp.Id,
-                wp.Name,
-                wp.Description,
-                wp.CreatedAt,
-                wp.PlanExercises.Count() // Plandaki egzersiz sayısı
-            ))
-            .ToListAsync();
-
-        return Ok(plans);
-    }
-
-    // GET: api/workoutplans/{id}
-    // Belirli bir planın detaylarını getirir (kullanıcıya aitse)
-    [HttpGet("{id}")]
-    public async Task<ActionResult<WorkoutPlanDetailDto>> GetWorkoutPlanById(int id)
-    {
-        var userId = GetCurrentUserId();
-        var plan = await _context.WorkoutPlans
-            .Include(wp => wp.PlanExercises) // İlişkili egzersizleri çek
-                .ThenInclude(pe => pe.Exercise) // Egzersiz isimlerini almak için
-            .Where(wp => wp.Id == id && wp.UserId == userId)
-            .Select(wp => new WorkoutPlanDetailDto(
-                wp.Id,
-                wp.Name,
-                wp.Description,
-                wp.CreatedAt,
-                wp.PlanExercises.Select(pe => new PlanExerciseDetailDto(
-                    pe.Id,
-                    pe.ExerciseId,
-                    pe.Exercise.Name, // Egzersiz adı
-                    pe.Sets,
-                    pe.Reps,
-                    pe.RestDurationSeconds,
-                    pe.OrderInPlan
-                )).OrderBy(ped => ped.OrderInPlan).ToList() // Sıraya göre listele
-            ))
-            .FirstOrDefaultAsync();
-
-        if (plan == null)
+        if (!await UserExists(userId)) // Kullanıcı var mı kontrolü
         {
-            return NotFound(new { Message = "Antrenman planı bulunamadı veya size ait değil." });
+            return NotFound($"User with ID {userId} not found.");
         }
 
-        return Ok(plan);
+        // WorkoutPlan yerine WorkoutPlanDto döndürmek daha iyi olabilir ama şimdilik modeli döndürelim
+        return await _context.WorkoutPlans
+                             .Where(wp => wp.UserId == userId)
+                             .OrderBy(wp => wp.Name)
+                             .ToListAsync();
     }
 
-    // POST: api/workoutplans
-    // Yeni bir antrenman planı oluşturur
-    [HttpPost]
-    public async Task<ActionResult<WorkoutPlanSummaryDto>> CreateWorkoutPlan([FromBody] CreateWorkoutPlanDto createDto)
+    // GET: api/users/{userId}/WorkoutPlan/{planId}
+    [HttpGet("{planId}")]
+    public async Task<ActionResult<WorkoutPlan>> GetWorkoutPlan(int userId, int planId)
     {
-        var userId = GetCurrentUserId();
-        var plan = new WorkoutPlan
+        var workoutPlan = await _context.WorkoutPlans
+                                        .FirstOrDefaultAsync(wp => wp.WorkoutPlanId == planId && wp.UserId == userId);
+
+        if (workoutPlan == null)
         {
-            UserId = userId,
-            Name = createDto.Name,
-            Description = createDto.Description,
-            CreatedAt = DateTime.UtcNow
+            return NotFound($"Workout plan with ID {planId} not found for user {userId}.");
+        }
+
+        // WorkoutPlanDto döndürmek daha iyi olabilir
+        return workoutPlan;
+    }
+
+    // POST: api/users/{userId}/WorkoutPlan
+    // --- DTO KULLANILACAK ŞEKİLDE GÜNCELLENDİ ---
+    [HttpPost]
+    public async Task<ActionResult<WorkoutPlan>> CreateWorkoutPlan(int userId, [FromBody] WorkoutPlanCreateDto createDto) // Artık Create DTO alıyor
+    {
+        if (!await UserExists(userId))
+        {
+            return NotFound($"User with ID {userId} not found.");
+        }
+
+        // Yeni WorkoutPlan nesnesi DTO'dan oluşturuluyor
+        var newWorkoutPlan = new WorkoutPlan
+        {
+            Name = createDto.Name, // DTO'dan Name
+            Description = createDto.Description, // DTO'dan Description
+            UserId = userId, // Rotadan gelen userId
+            CreatedAt = DateTime.UtcNow, // Sunucu zamanı
         };
 
-        _context.WorkoutPlans.Add(plan);
-        await _context.SaveChangesAsync();
+        _context.WorkoutPlans.Add(newWorkoutPlan);
 
-        var summaryDto = new WorkoutPlanSummaryDto(plan.Id, plan.Name, plan.Description, plan.CreatedAt, 0);
-        // Oluşturulan planı döndür (201 Created)
-        return CreatedAtAction(nameof(GetWorkoutPlanById), new { id = plan.Id }, summaryDto);
-    }
-
-    // PUT: api/workoutplans/{id}
-    // Mevcut bir planı günceller (kullanıcıya aitse)
-    [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateWorkoutPlan(int id, [FromBody] UpdateWorkoutPlanDto updateDto)
-    {
-        var userId = GetCurrentUserId();
-        var planToUpdate = await _context.WorkoutPlans
-            .FirstOrDefaultAsync(wp => wp.Id == id && wp.UserId == userId);
-
-        if (planToUpdate == null)
+        try
         {
-            return NotFound(new { Message = "Güncellenecek plan bulunamadı veya size ait değil." });
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) // Veritabanı hatasını yakala
+        {
+            // Hata detayını loglamak önemli
+            Console.WriteLine($"ERROR saving new WorkoutPlan: {ex.InnerException?.Message ?? ex.Message}");
+            // İstemciye daha genel bir hata döndür veya spesifik duruma göre farklı kodlar
+            return StatusCode(500, $"Plan kaydedilirken bir veritabanı hatası oluştu. Detay: {ex.InnerException?.Message ?? ex.Message}");
         }
 
-        planToUpdate.Name = updateDto.Name;
-        planToUpdate.Description = updateDto.Description;
-        // planToUpdate.UpdatedAt = DateTime.UtcNow; // Eğer UpdatedAt alanı varsa
+        // Oluşturulan tam WorkoutPlan nesnesini döndür (ID atanmış haliyle)
+        return CreatedAtAction(nameof(GetWorkoutPlan), new { userId = userId, planId = newWorkoutPlan.WorkoutPlanId }, newWorkoutPlan);
+    }
+    // ------------------------------------------
 
-        await _context.SaveChangesAsync();
+    // PUT: api/users/{userId}/WorkoutPlan/{planId}
+    // --- DTO KULLANILACAK ŞEKİLDE GÜNCELLENDİ ---
+    [HttpPut("{planId}")]
+    public async Task<IActionResult> UpdateWorkoutPlan(int userId, int planId, [FromBody] WorkoutPlanUpdateDto updateDto) // Artık Update DTO alıyor
+    {
+        // Mevcut planı bul ve kullanıcıya ait mi kontrol et
+        var existingPlan = await _context.WorkoutPlans
+                                        .FirstOrDefaultAsync(wp => wp.WorkoutPlanId == planId && wp.UserId == userId);
+
+        if (existingPlan == null)
+        {
+            return NotFound($"Workout plan with ID {planId} not found for user {userId}.");
+        }
+
+        // DTO'dan gelen değerlerle güncelle
+        existingPlan.Name = updateDto.Name;
+        existingPlan.Description = updateDto.Description;
+        // existingPlan.UpdatedAt = DateTime.UtcNow; // UpdatedAt alanı varsa güncellenir
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!await WorkoutPlanExists(planId, userId)) return NotFound(); else throw;
+        }
+        catch (DbUpdateException ex) { return BadRequest($"Database update error: {ex.InnerException?.Message ?? ex.Message}"); }
 
         return NoContent(); // Başarılı güncelleme
     }
+    // ------------------------------------------
 
-    // DELETE: api/workoutplans/{id}
-    // Bir planı siler (kullanıcıya aitse)
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteWorkoutPlan(int id)
+    // DELETE: api/users/{userId}/WorkoutPlan/{planId}
+    [HttpDelete("{planId}")]
+    public async Task<IActionResult> DeleteWorkoutPlan(int userId, int planId)
     {
-        var userId = GetCurrentUserId();
-        var planToDelete = await _context.WorkoutPlans
-            .Include(wp => wp.PlanExercises) // İlişkili egzersizleri de silmek için (Cascade ayarına bağlı)
-            .FirstOrDefaultAsync(wp => wp.Id == id && wp.UserId == userId);
+        var workoutPlan = await _context.WorkoutPlans
+                                        // Silmeden önce ilişkili egzersizleri yüklemeye gerek yok
+                                        .FirstOrDefaultAsync(wp => wp.WorkoutPlanId == planId && wp.UserId == userId);
 
-        if (planToDelete == null)
+        if (workoutPlan == null)
         {
-            return NotFound(new { Message = "Silinecek plan bulunamadı veya size ait değil." });
+            return NotFound($"Workout plan with ID {planId} not found for user {userId}.");
         }
 
-        _context.WorkoutPlans.Remove(planToDelete); // Cascade ayarı varsa PlanExercises de silinir
-        await _context.SaveChangesAsync();
+        _context.WorkoutPlans.Remove(workoutPlan);
 
-        return NoContent(); // Başarılı silme
+        try
+        {
+            // Cascade delete ayarlıysa ilişkili PlanExercises'leri de siler
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            Console.WriteLine($"ERROR deleting WorkoutPlan {planId}: {ex.InnerException?.Message ?? ex.Message}");
+            return BadRequest($"Plan silinirken bir veritabanı hatası oluştu. Detay: {ex.InnerException?.Message ?? ex.Message}");
+        }
+
+        return NoContent();
     }
 
-    // --- Plana Egzersiz Ekleme/Güncelleme/Silme ---
+    // --- PlanExercises Yönetimi ---
 
-    // POST: api/workoutplans/{planId}/exercises
-    // Bir plana yeni egzersiz ekler
-    [HttpPost("{planId}/exercises")]
-    public async Task<ActionResult<PlanExerciseDetailDto>> AddExerciseToPlan(int planId, [FromBody] AddOrUpdatePlanExerciseDto exerciseDto)
+    // GET: api/users/{userId}/WorkoutPlan/{planId}/Exercises
+    [HttpGet("{planId}/Exercises")]
+    public async Task<ActionResult<IEnumerable<PlanExercise>>> GetPlanExercises(int userId, int planId)
     {
-        var userId = GetCurrentUserId();
-        var plan = await _context.WorkoutPlans
-                         .Include(p => p.PlanExercises) // Mevcut egzersizleri kontrol etmek için
-                         .FirstOrDefaultAsync(wp => wp.Id == planId && wp.UserId == userId);
-
-        if (plan == null)
+        if (!await WorkoutPlanExists(planId, userId))
         {
-            return NotFound(new { Message = "Antrenman planı bulunamadı veya size ait değil." });
+            return NotFound($"Workout plan with ID {planId} not found for user {userId}.");
         }
 
-        // Egzersiz veritabanında var mı?
-        var exerciseExists = await _context.Exercises.AnyAsync(e => e.Id == exerciseDto.ExerciseId);
-        if (!exerciseExists)
+        // PlanExerciseDto döndürmek daha iyi olabilir
+        return await _context.PlanExercises
+                             .Where(pe => pe.WorkoutPlanId == planId)
+                             .Include(pe => pe.Exercise)
+                                .ThenInclude(ex => ex.ExerciseRegion)
+                             .Include(pe => pe.Exercise)
+                                .ThenInclude(ex => ex.DifficultyLevel)
+                             .OrderBy(pe => pe.OrderInPlan ?? int.MaxValue)
+                             .ToListAsync();
+    }
+
+    // GET: api/users/{userId}/WorkoutPlan/{planId}/Exercises/{planExerciseId}
+    [HttpGet("{planId}/Exercises/{planExerciseId}")]
+    public async Task<ActionResult<PlanExercise>> GetPlanExercise(int userId, int planId, int planExerciseId)
+    {
+        if (!await WorkoutPlanExists(planId, userId))
         {
-            return BadRequest(new { Message = "Geçersiz Egzersiz ID'si." });
+            return NotFound($"Workout plan with ID {planId} not found for user {userId}.");
         }
 
-        // Aynı egzersiz planda zaten var mı? (İsteğe bağlı kontrol)
-        if (plan.PlanExercises.Any(pe => pe.ExerciseId == exerciseDto.ExerciseId))
+        var planExercise = await _context.PlanExercises
+                                     .Include(pe => pe.Exercise)
+                                     .FirstOrDefaultAsync(pe => pe.PlanExerciseId == planExerciseId && pe.WorkoutPlanId == planId);
+
+        if (planExercise == null)
         {
-            return BadRequest(new { Message = "Bu egzersiz zaten planda mevcut." });
+            return NotFound($"Exercise with ID {planExerciseId} not found in plan {planId}.");
+        }
+        // PlanExerciseDto döndürmek daha iyi olabilir
+        return planExercise;
+    }
+
+
+    // POST: api/users/{userId}/WorkoutPlan/{planId}/Exercises
+    // --- DTO KULLANILACAK ŞEKİLDE GÜNCELLENDİ ---
+    [HttpPost("{planId}/Exercises")]
+    public async Task<ActionResult<PlanExercise>> AddExerciseToPlan(int userId, int planId, [FromBody] PlanExerciseCreateDto createDto) // Artık Create DTO alıyor
+    {
+        if (!await WorkoutPlanExists(planId, userId))
+        {
+            return NotFound($"Workout plan with ID {planId} not found for user {userId}.");
+        }
+        if (!await _context.Exercises.AnyAsync(ex => ex.ExerciseId == createDto.ExerciseId))
+        {
+            return BadRequest($"Exercise with ID {createDto.ExerciseId} not found.");
         }
 
-        var planExercise = new PlanExercise
+        // DTO'dan yeni PlanExercise nesnesi oluştur
+        var newPlanExercise = new PlanExercise
         {
             WorkoutPlanId = planId,
-            ExerciseId = exerciseDto.ExerciseId,
-            Sets = exerciseDto.Sets,
-            Reps = exerciseDto.Reps,
-            RestDurationSeconds = exerciseDto.RestDurationSeconds,
-            OrderInPlan = exerciseDto.OrderInPlan ?? (plan.PlanExercises.Count > 0 ? plan.PlanExercises.Max(pe => pe.OrderInPlan ?? 0) + 1 : 1) // Otomatik sıra
+            ExerciseId = createDto.ExerciseId,
+            Sets = createDto.Sets,
+            Reps = createDto.Reps,
+            RestDurationSeconds = createDto.RestDurationSeconds,
+            OrderInPlan = createDto.OrderInPlan
         };
 
-        _context.PlanExercises.Add(planExercise);
-        await _context.SaveChangesAsync();
+        _context.PlanExercises.Add(newPlanExercise);
 
-        // Eklenen egzersizin detayını döndür
-        var exercise = await _context.Exercises.FindAsync(planExercise.ExerciseId);
-        var detailDto = new PlanExerciseDetailDto(
-            planExercise.Id,
-            planExercise.ExerciseId,
-            exercise?.Name ?? "Bilinmeyen Egzersiz",
-            planExercise.Sets,
-            planExercise.Reps,
-            planExercise.RestDurationSeconds,
-            planExercise.OrderInPlan
-        );
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            Console.WriteLine($"ERROR saving new PlanExercise: {ex.InnerException?.Message ?? ex.Message}");
+            return StatusCode(500, $"Egzersiz plana kaydedilirken bir veritabanı hatası oluştu: {ex.InnerException?.Message ?? ex.Message}");
+        }
 
-        // Oluşturulan kaynağın konumunu ve kendisini döndür
-        // Tam URI için daha karmaşık bir yapı gerekir, şimdilik sadece DTO dönelim.
-        return Ok(detailDto); // Veya CreatedAtAction benzeri
+
+        // Oluşturulan kaynağı döndür (ilişkili Exercise ile)
+        await _context.Entry(newPlanExercise).Reference(pe => pe.Exercise).LoadAsync();
+        return CreatedAtAction(nameof(GetPlanExercise), new { userId, planId, planExerciseId = newPlanExercise.PlanExerciseId }, newPlanExercise);
     }
+    // ------------------------------------------
 
-    // PUT: api/workoutplans/{planId}/exercises/{planExerciseId}
-    // Plandaki bir egzersizin detaylarını günceller
-    [HttpPut("{planId}/exercises/{planExerciseId}")]
-    public async Task<IActionResult> UpdateExerciseInPlan(int planId, int planExerciseId, [FromBody] AddOrUpdatePlanExerciseDto updateDto)
+    // PUT: api/users/{userId}/WorkoutPlan/{planId}/Exercises/{planExerciseId}
+    // --- DTO KULLANILARAK GÜNCELLENDİ (Önceki hali doğruydu) ---
+    [HttpPut("{planId}/Exercises/{planExerciseId}")]
+    public async Task<IActionResult> UpdatePlanExercise(int userId, int planId, int planExerciseId, [FromBody] PlanExerciseUpdateDto updateDto) // DTO alıyor
     {
-        var userId = GetCurrentUserId();
-        var planExerciseToUpdate = await _context.PlanExercises
-            .Include(pe => pe.WorkoutPlan) // Planın kullanıcıya ait olduğunu doğrulamak için
-            .FirstOrDefaultAsync(pe => pe.Id == planExerciseId && pe.WorkoutPlanId == planId && pe.WorkoutPlan.UserId == userId);
-
-        if (planExerciseToUpdate == null)
+        if (!await WorkoutPlanExists(planId, userId))
         {
-            return NotFound(new { Message = "Plandaki egzersiz kaydı bulunamadı veya size ait değil." });
+            return NotFound($"Workout plan with ID {planId} not found for user {userId}.");
         }
 
-        // Egzersiz ID'si değişiyorsa yeni ID'nin geçerli olduğunu kontrol et
-        if (planExerciseToUpdate.ExerciseId != updateDto.ExerciseId)
+        var existingPlanExercise = await _context.PlanExercises
+                                                .FirstOrDefaultAsync(pe => pe.PlanExerciseId == planExerciseId && pe.WorkoutPlanId == planId);
+
+        if (existingPlanExercise == null)
         {
-            var exerciseExists = await _context.Exercises.AnyAsync(e => e.Id == updateDto.ExerciseId);
-            if (!exerciseExists)
-            {
-                return BadRequest(new { Message = "Geçersiz Egzersiz ID'si." });
-            }
-            planExerciseToUpdate.ExerciseId = updateDto.ExerciseId;
+            return NotFound($"Exercise with ID {planExerciseId} not found in plan {planId}.");
         }
 
-        planExerciseToUpdate.Sets = updateDto.Sets;
-        planExerciseToUpdate.Reps = updateDto.Reps;
-        planExerciseToUpdate.RestDurationSeconds = updateDto.RestDurationSeconds;
-        planExerciseToUpdate.OrderInPlan = updateDto.OrderInPlan;
+        // DTO'dan gelen değerlerle güncelle
+        existingPlanExercise.Sets = updateDto.Sets;
+        existingPlanExercise.Reps = updateDto.Reps;
+        existingPlanExercise.RestDurationSeconds = updateDto.RestDurationSeconds;
+        existingPlanExercise.OrderInPlan = updateDto.OrderInPlan;
 
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!await _context.PlanExercises.AnyAsync(pe => pe.PlanExerciseId == planExerciseId && pe.WorkoutPlanId == planId)) return NotFound(); else throw;
+        }
+        catch (DbUpdateException ex) { return BadRequest($"Database update error: {ex.InnerException?.Message ?? ex.Message}"); }
+
+        return NoContent();
+    }
+    // ---------------------------------
+
+    // DELETE: api/users/{userId}/WorkoutPlan/{planId}/Exercises/{planExerciseId}
+    [HttpDelete("{planId}/Exercises/{planExerciseId}")]
+    public async Task<IActionResult> RemoveExerciseFromPlan(int userId, int planId, int planExerciseId)
+    {
+        if (!await WorkoutPlanExists(planId, userId))
+        {
+            return NotFound($"Workout plan with ID {planId} not found for user {userId}.");
+        }
+
+        var planExercise = await _context.PlanExercises
+                                        .FirstOrDefaultAsync(pe => pe.PlanExerciseId == planExerciseId && pe.WorkoutPlanId == planId);
+
+        if (planExercise == null)
+        {
+            return NotFound($"Exercise with ID {planExerciseId} not found in plan {planId}.");
+        }
+
+        _context.PlanExercises.Remove(planExercise);
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) { return BadRequest($"Database error: {ex.InnerException?.Message ?? ex.Message}"); }
+
         return NoContent();
     }
 
-    // DELETE: api/workoutplans/{planId}/exercises/{planExerciseId}
-    // Bir egzersizi plandan kaldırır
-    [HttpDelete("{planId}/exercises/{planExerciseId}")]
-    public async Task<IActionResult> RemoveExerciseFromPlan(int planId, int planExerciseId)
+    // --- Helper Metotlar ---
+    private async Task<bool> UserExists(int userId)
     {
-        var userId = GetCurrentUserId();
-        var planExerciseToDelete = await _context.PlanExercises
-            .Include(pe => pe.WorkoutPlan)
-            .FirstOrDefaultAsync(pe => pe.Id == planExerciseId && pe.WorkoutPlanId == planId && pe.WorkoutPlan.UserId == userId);
+        return await _context.Users.AnyAsync(e => e.UserId == userId);
+    }
 
-        if (planExerciseToDelete == null)
-        {
-            return NotFound(new { Message = "Plandaki egzersiz kaydı bulunamadı veya size ait değil." });
-        }
-
-        _context.PlanExercises.Remove(planExerciseToDelete);
-        await _context.SaveChangesAsync();
-        return NoContent();
+    private async Task<bool> WorkoutPlanExists(int planId, int userId)
+    {
+        return await _context.WorkoutPlans.AnyAsync(e => e.WorkoutPlanId == planId && e.UserId == userId);
     }
 }
+
+// ========== DTO Sınıfları ==========
+// (Bu kısım sınıfın dışında, namespace içinde veya ayrı bir Dtos klasöründe olmalı)
+
+/// <summary>
+/// Antrenman planı oluştururken kullanılan veri transfer nesnesi.
+/// </summary>
+public class WorkoutPlanCreateDto
+{
+    [Required(ErrorMessage = "Plan adı boş bırakılamaz.")]
+    [StringLength(100, MinimumLength = 3, ErrorMessage = "Plan adı 3 ile 100 karakter arasında olmalıdır.")]
+    public string Name { get; set; } = null!;
+
+    [StringLength(500, ErrorMessage = "Açıklama en fazla 500 karakter olabilir.")]
+    public string? Description { get; set; }
+}
+
+/// <summary>
+/// Antrenman planı güncellerken kullanılan veri transfer nesnesi.
+/// </summary>
+public class WorkoutPlanUpdateDto
+{
+    [Required(ErrorMessage = "Plan adı boş bırakılamaz.")]
+    [StringLength(100, MinimumLength = 3, ErrorMessage = "Plan adı 3 ile 100 karakter arasında olmalıdır.")]
+    public string Name { get; set; } = null!;
+
+    [StringLength(500, ErrorMessage = "Açıklama en fazla 500 karakter olabilir.")]
+    public string? Description { get; set; }
+}
+
+/// <summary>
+/// Bir plana egzersiz eklerken kullanılan veri transfer nesnesi.
+/// </summary>
+public class PlanExerciseCreateDto
+{
+    [Required(ErrorMessage = "Eklenecek egzersizin ID'si gereklidir.")]
+    public int ExerciseId { get; set; }
+
+    [Required(ErrorMessage = "Set sayısı gereklidir.")]
+    [Range(1, 100, ErrorMessage = "Set sayısı 1 ile 100 arasında olmalıdır.")] // Üst limiti ayarlayın
+    public int Sets { get; set; }
+
+    [Required(ErrorMessage = "Tekrar sayısı gereklidir.")]
+    [Range(1, 100, ErrorMessage = "Tekrar sayısı 1 ile 100 arasında olmalıdır.")] // Üst limiti ayarlayın
+    public int Reps { get; set; }
+
+    [Range(0, 3600, ErrorMessage = "Dinlenme süresi 0 ile 3600 saniye arasında olmalıdır.")] // 1 saate kadar
+    public int? RestDurationSeconds { get; set; }
+
+    [Range(1, 1000, ErrorMessage = "Sıra numarası 1 ile 1000 arasında olmalıdır.")] // 0 yerine 1'den başlasın?
+    public int? OrderInPlan { get; set; }
+}
+
+/// <summary>
+/// Bir plandaki egzersizi güncellerken kullanılan veri transfer nesnesi.
+/// </summary>
+public class PlanExerciseUpdateDto
+{
+    [Required(ErrorMessage = "Set sayısı gereklidir.")]
+    [Range(1, 100, ErrorMessage = "Set sayısı 1 ile 100 arasında olmalıdır.")]
+    public int Sets { get; set; }
+
+    [Required(ErrorMessage = "Tekrar sayısı gereklidir.")]
+    [Range(1, 100, ErrorMessage = "Tekrar sayısı 1 ile 100 arasında olmalıdır.")]
+    public int Reps { get; set; }
+
+    [Range(0, 3600, ErrorMessage = "Dinlenme süresi 0 ile 3600 saniye arasında olmalıdır.")]
+    public int? RestDurationSeconds { get; set; }
+
+    [Range(1, 1000, ErrorMessage = "Sıra numarası 1 ile 1000 arasında olmalıdır.")]
+    public int? OrderInPlan { get; set; }
+
+    // workoutPlanId, exerciseId, planExerciseId buraya eklenmez, URL'den veya veritabanından alınır.
+}
+
+// ----------------------------------

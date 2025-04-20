@@ -1,14 +1,12 @@
-﻿using GymKeepWebApi.Models;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
+using GymKeepWebApi.Models;
+using System.Collections.Generic;
 using System.Linq;
-using GymKeepWebApi.Dtos;
+using System.Threading.Tasks;
 
 [ApiController]
-[Route("api/workoutsessions")]
-[Authorize]
+[Route("api/users/{userId}/[controller]")] // /api/users/{userId}/workoutsessions
 public class WorkoutSessionController : ControllerBase
 {
     private readonly MyDbContext _context;
@@ -18,310 +16,369 @@ public class WorkoutSessionController : ControllerBase
         _context = context;
     }
 
-    private int GetCurrentUserId()
+    // GET: api/users/{userId}/workoutsessions
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<WorkoutSession>>> GetWorkoutSessions(int userId, [FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate)
     {
-        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (int.TryParse(userIdString, out int userId)) { return userId; }
-        throw new UnauthorizedAccessException("Kullanıcı kimliği alınamadı.");
-    }
+        if (!await UserExists(userId)) return NotFound($"User {userId} not found.");
 
-    // POST: api/workoutsessions/start
-    // Yeni bir antrenman seansı başlatır
-    [HttpPost("start")]
-    public async Task<ActionResult<WorkoutSessionSummaryDto>> StartSession([FromBody] StartWorkoutSessionDto startDto)
-    {
-        var userId = GetCurrentUserId();
-        string? planName = null;
+        var query = _context.WorkoutSessions
+                            .Where(ws => ws.UserId == userId)
+                            .Include(ws => ws.WorkoutPlan) // Takip edilen planı yükle (opsiyonel)
+                            .OrderByDescending(ws => ws.SessionDate) // En yeniden eskiye sırala
+                            .AsQueryable();
 
-        // Eğer plan ID'si verildiyse, planın kullanıcıya ait olup olmadığını kontrol et
-        if (startDto.WorkoutPlanId.HasValue)
+        if (startDate.HasValue)
         {
-            var plan = await _context.WorkoutPlans
-                .Where(wp => wp.Id == startDto.WorkoutPlanId.Value && wp.UserId == userId)
-                .Select(wp => new { wp.Name }) // Sadece ismi alalım
-                .FirstOrDefaultAsync();
-            if (plan == null)
-            {
-                return BadRequest(new { Message = "Belirtilen antrenman planı bulunamadı veya size ait değil." });
-            }
-            planName = plan.Name;
+            query = query.Where(ws => ws.SessionDate >= startDate.Value.Date); // Tarihin başlangıcı
+        }
+        if (endDate.HasValue)
+        {
+            // Bitiş tarihinin sonunu dahil etmek için +1 gün ekleyip küçük kontrolü yapın
+            query = query.Where(ws => ws.SessionDate < endDate.Value.Date.AddDays(1));
         }
 
-        var newSession = new WorkoutSession
-        {
-            UserId = userId,
-            SessionDate = DateTime.UtcNow,
-            WorkoutPlanId = startDto.WorkoutPlanId,
-            Notes = startDto.Notes
-            // DurationMinutes başlangıçta null
-        };
 
-        _context.WorkoutSessions.Add(newSession);
+        return await query.ToListAsync();
+    }
+
+    // GET: api/users/{userId}/workoutsessions/{sessionId}
+    [HttpGet("{sessionId}")]
+    public async Task<ActionResult<WorkoutSession>> GetWorkoutSession(int userId, int sessionId)
+    {
+        var workoutSession = await _context.WorkoutSessions
+                                           .Include(ws => ws.WorkoutPlan)
+                                           .Include(ws => ws.User) // Kullanıcıyı yükle (opsiyonel)
+                                                                   // SessionExercises'leri de burada yüklemek isteyebilirsiniz
+                                                                   // .Include(ws => ws.SessionExercises)
+                                                                   //    .ThenInclude(se => se.Exercise)
+                                           .FirstOrDefaultAsync(ws => ws.WorkoutSessionId == sessionId && ws.UserId == userId);
+
+        if (workoutSession == null)
+        {
+            return NotFound($"Session {sessionId} not found for user {userId}.");
+        }
+
+        return workoutSession;
+    }
+
+    // POST: api/users/{userId}/workoutsessions
+    [HttpPost]
+    public async Task<ActionResult<WorkoutSession>> CreateWorkoutSession(int userId, WorkoutSession workoutSession)
+    {
+        if (!await UserExists(userId)) return NotFound($"User {userId} not found.");
+
+        // Opsiyonel: Eğer bir WorkoutPlanId verildiyse, o planın kullanıcıya ait olup olmadığını kontrol et
+        if (workoutSession.WorkoutPlanId.HasValue &&
+           !await _context.WorkoutPlans.AnyAsync(wp => wp.WorkoutPlanId == workoutSession.WorkoutPlanId.Value && wp.UserId == userId))
+        {
+            return BadRequest($"Workout plan {workoutSession.WorkoutPlanId} not found or does not belong to user {userId}.");
+        }
+
+        workoutSession.UserId = userId;
+        // workoutSession.SessionDate zaten default olarak DateTime.UtcNow alıyor (modelde)
+
+        _context.WorkoutSessions.Add(workoutSession);
         await _context.SaveChangesAsync();
 
-        // Eğer bir plandan başlatıldıysa, plandaki egzersizleri seansa otomatik ekle (opsiyonel)
-        if (startDto.WorkoutPlanId.HasValue)
+        // İlişkili verileri yükle ve döndür
+        await _context.Entry(workoutSession).Reference(ws => ws.User).LoadAsync();
+        if (workoutSession.WorkoutPlanId.HasValue) await _context.Entry(workoutSession).Reference(ws => ws.WorkoutPlan).LoadAsync();
+
+
+        return CreatedAtAction(nameof(GetWorkoutSession), new { userId = userId, sessionId = workoutSession.WorkoutSessionId }, workoutSession);
+    }
+
+    // PUT: api/users/{userId}/workoutsessions/{sessionId}
+    [HttpPut("{sessionId}")]
+    public async Task<IActionResult> UpdateWorkoutSession(int userId, int sessionId, WorkoutSession workoutSession)
+    {
+        if (sessionId != workoutSession.WorkoutSessionId) return BadRequest("Session ID mismatch.");
+
+        if (!await _context.WorkoutSessions.AsNoTracking().AnyAsync(ws => ws.WorkoutSessionId == sessionId && ws.UserId == userId))
         {
-            var planExercises = await _context.PlanExercises
-                .Where(pe => pe.WorkoutPlanId == startDto.WorkoutPlanId.Value)
-                .OrderBy(pe => pe.OrderInPlan)
-                .ToListAsync();
+            return NotFound($"Session {sessionId} not found for user {userId}.");
+        }
 
-            foreach (var planEx in planExercises)
-            {
-                var sessionExercise = new SessionExercise
-                {
-                    WorkoutSessionId = newSession.Id,
-                    ExerciseId = planEx.ExerciseId,
-                    PlanExerciseId = planEx.Id, // Planla bağlantı
-                    OrderInSession = planEx.OrderInPlan
-                };
-                _context.SessionExercises.Add(sessionExercise);
-
-                // Plandaki set sayısı kadar boş SetLog oluştur (opsiyonel)
-                for (int i = 1; i <= planEx.Sets; i++)
-                {
-                    _context.SetLogs.Add(new SetLog
-                    {
-                        SessionExerciseId = sessionExercise.Id, // ID atanmasını beklemeden eklemek sorun olabilir, SaveChanges sonrası yapılmalı
-                        SetNumber = i,
-                        IsCompleted = false
-                    });
-                }
-            }
-            await _context.SaveChangesAsync(); // Egzersizleri ve boş setleri kaydet
+        // Opsiyonel: Eğer WorkoutPlanId değiştirildiyse, yeni planın kullanıcıya ait olup olmadığını kontrol et
+        var originalSession = await _context.WorkoutSessions.AsNoTracking().FirstOrDefaultAsync(ws => ws.WorkoutSessionId == sessionId);
+        if (workoutSession.WorkoutPlanId != originalSession?.WorkoutPlanId && workoutSession.WorkoutPlanId.HasValue &&
+           !await _context.WorkoutPlans.AnyAsync(wp => wp.WorkoutPlanId == workoutSession.WorkoutPlanId.Value && wp.UserId == userId))
+        {
+            return BadRequest($"Workout plan {workoutSession.WorkoutPlanId} not found or does not belong to user {userId}.");
         }
 
 
-        var summaryDto = new WorkoutSessionSummaryDto(
-            newSession.Id,
-            newSession.SessionDate,
-            newSession.DurationMinutes,
-            newSession.Notes,
-            newSession.WorkoutPlanId,
-            planName,
-            await _context.SessionExercises.CountAsync(se => se.WorkoutSessionId == newSession.Id), // Egzersiz sayısı
-            0 // Başlangıçta tamamlanan set 0
-        );
+        workoutSession.UserId = userId; // Tekrar set et
+        _context.Entry(workoutSession).State = EntityState.Modified;
+        // UserId değiştirilmemeli
+        _context.Entry(workoutSession).Property(x => x.UserId).IsModified = false;
 
-        // Oluşturulan seansın özetini döndür
-        return Ok(summaryDto); // Veya CreatedAtAction
-    }
 
-    // GET: api/workoutsessions
-    // Kullanıcının geçmiş antrenman seanslarını listeler
-    [HttpGet]
-    public async Task<ActionResult<IEnumerable<WorkoutSessionSummaryDto>>> GetMySessions()
-    {
-        var userId = GetCurrentUserId();
-        var sessions = await _context.WorkoutSessions
-            .Where(ws => ws.UserId == userId)
-            .Include(ws => ws.WorkoutPlan) // Plan adını almak için
-            .Include(ws => ws.SessionExercises) // Egzersiz sayısını almak için
-                .ThenInclude(se => se.SetLogs) // Tamamlanan set sayısını almak için
-            .OrderByDescending(ws => ws.SessionDate) // En yeniden eskiye sırala
-            .Select(ws => new WorkoutSessionSummaryDto(
-                ws.Id,
-                ws.SessionDate,
-                ws.DurationMinutes,
-                ws.Notes,
-                ws.WorkoutPlanId,
-                ws.WorkoutPlan != null ? ws.WorkoutPlan.Name : null,
-                ws.SessionExercises.Count,
-                ws.SessionExercises.SelectMany(se => se.SetLogs).Count(sl => sl.IsCompleted) // Tamamlanan set sayısı
-            ))
-            .ToListAsync();
-
-        return Ok(sessions);
-    }
-
-    // GET: api/workoutsessions/{sessionId}
-    // Belirli bir seansın tüm detaylarını getirir
-    [HttpGet("{sessionId}")]
-    public async Task<ActionResult<WorkoutSessionDetailDto>> GetSessionDetails(int sessionId)
-    {
-        var userId = GetCurrentUserId();
-        var sessionDetail = await _context.WorkoutSessions
-            .Where(ws => ws.Id == sessionId && ws.UserId == userId)
-            .Include(ws => ws.WorkoutPlan)
-            .Include(ws => ws.SessionExercises.OrderBy(se => se.OrderInSession)) // Sıralı egzersizler
-                .ThenInclude(se => se.Exercise) // Egzersiz adı için
-            .Include(ws => ws.SessionExercises.OrderBy(se => se.OrderInSession))
-                .ThenInclude(se => se.SetLogs.OrderBy(sl => sl.SetNumber)) // Sıralı setler
-            .Select(ws => new WorkoutSessionDetailDto(
-                ws.Id,
-                ws.SessionDate,
-                ws.DurationMinutes,
-                ws.Notes,
-                ws.WorkoutPlanId,
-                ws.WorkoutPlan != null ? ws.WorkoutPlan.Name : null,
-                ws.SessionExercises.Select(se => new SessionExerciseDetailDto(
-                    se.Id,
-                    se.ExerciseId,
-                    se.Exercise.Name,
-                    se.OrderInSession,
-                    se.SetLogs.Select(sl => new SetLogDto(
-                        sl.Id,
-                        sl.SetNumber,
-                        sl.Weight,
-                        sl.RepsCompleted,
-                        sl.IsCompleted,
-                        sl.CompletedAt
-                    )).ToList()
-                )).ToList()
-            ))
-            .FirstOrDefaultAsync();
-
-        if (sessionDetail == null)
+        try
         {
-            return NotFound(new { Message = "Antrenman seansı bulunamadı veya size ait değil." });
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!await WorkoutSessionExists(sessionId, userId)) return NotFound();
+            else throw;
         }
 
-        return Ok(sessionDetail);
+        return NoContent();
     }
 
-    // POST: api/workoutsessions/{sessionId}/exercises
-    // Devam eden bir seansa egzersiz ekler
+    // DELETE: api/users/{userId}/workoutsessions/{sessionId}
+    [HttpDelete("{sessionId}")]
+    public async Task<IActionResult> DeleteWorkoutSession(int userId, int sessionId)
+    {
+        var workoutSession = await _context.WorkoutSessions.FirstOrDefaultAsync(ws => ws.WorkoutSessionId == sessionId && ws.UserId == userId);
+        if (workoutSession == null)
+        {
+            return NotFound($"Session {sessionId} not found for user {userId}.");
+        }
+
+        _context.WorkoutSessions.Remove(workoutSession); // Cascade delete SessionExercises ve SetLogs'u silmeli
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+
+    // --- SessionExercise Yönetimi ---
+
+    // GET: api/users/{userId}/workoutsessions/{sessionId}/exercises
+    [HttpGet("{sessionId}/exercises")]
+    public async Task<ActionResult<IEnumerable<SessionExercise>>> GetSessionExercises(int userId, int sessionId)
+    {
+        if (!await WorkoutSessionExists(sessionId, userId))
+        {
+            return NotFound($"Session {sessionId} not found for user {userId}.");
+        }
+
+        return await _context.SessionExercises
+                             .Where(se => se.WorkoutSessionId == sessionId)
+                             .Include(se => se.Exercise) // Egzersiz detaylarını yükle
+                                .ThenInclude(ex => ex.ExerciseRegion)
+                             .Include(se => se.Exercise)
+                                .ThenInclude(ex => ex.DifficultyLevel)
+                             .Include(se => se.PlanExercise) // Hangi plan egzersizi (opsiyonel)
+                             .OrderBy(se => se.OrderInSession)
+                             .ToListAsync();
+    }
+
+    // GET: api/users/{userId}/workoutsessions/{sessionId}/exercises/{sessionExerciseId}
+    [HttpGet("{sessionId}/exercises/{sessionExerciseId}")]
+    public async Task<ActionResult<SessionExercise>> GetSessionExercise(int userId, int sessionId, int sessionExerciseId)
+    {
+        if (!await WorkoutSessionExists(sessionId, userId))
+        {
+            return NotFound($"Session {sessionId} not found for user {userId}.");
+        }
+
+        var sessionExercise = await _context.SessionExercises
+                                            .Include(se => se.Exercise)
+                                            .Include(se => se.PlanExercise)
+                                            .FirstOrDefaultAsync(se => se.SessionExerciseId == sessionExerciseId && se.WorkoutSessionId == sessionId);
+
+        if (sessionExercise == null)
+        {
+            return NotFound($"Session exercise {sessionExerciseId} not found in session {sessionId}.");
+        }
+        return sessionExercise;
+    }
+
+
+    // POST: api/users/{userId}/workoutsessions/{sessionId}/exercises
     [HttpPost("{sessionId}/exercises")]
-    public async Task<ActionResult<SessionExerciseDetailDto>> AddExerciseToSession(int sessionId, [FromBody] AddSessionExerciseDto addDto)
+    public async Task<ActionResult<SessionExercise>> AddExerciseToSession(int userId, int sessionId, SessionExercise sessionExercise)
     {
-        var userId = GetCurrentUserId();
-        // Seans kullanıcıya ait mi kontrol et
-        var sessionExists = await _context.WorkoutSessions.AnyAsync(ws => ws.Id == sessionId && ws.UserId == userId);
-        if (!sessionExists)
+        if (!await WorkoutSessionExists(sessionId, userId))
         {
-            return NotFound(new { Message = "Antrenman seansı bulunamadı veya size ait değil." });
-        }
-        // Egzersiz var mı kontrol et
-        var exercise = await _context.Exercises.FindAsync(addDto.ExerciseId);
-        if (exercise == null)
-        {
-            return BadRequest(new { Message = "Geçersiz Egzersiz ID'si." });
+            return NotFound($"Session {sessionId} not found for user {userId}.");
         }
 
-        var maxOrder = await _context.SessionExercises
-                                   .Where(se => se.WorkoutSessionId == sessionId)
-                                   .MaxAsync(se => (int?)se.OrderInSession) ?? 0;
-
-        var sessionExercise = new SessionExercise
+        // ExerciseId geçerli mi?
+        if (!await _context.Exercises.AnyAsync(ex => ex.ExerciseId == sessionExercise.ExerciseId))
         {
-            WorkoutSessionId = sessionId,
-            ExerciseId = addDto.ExerciseId,
-            OrderInSession = addDto.OrderInSession ?? (maxOrder + 1)
-            // PlanExerciseId burada null olacak
-        };
+            return BadRequest($"Exercise with ID {sessionExercise.ExerciseId} not found.");
+        }
+
+        // PlanExerciseId verildiyse geçerli mi ve o seansın planına mı ait? (İleri seviye kontrol)
+        if (sessionExercise.PlanExerciseId.HasValue)
+        {
+            var session = await _context.WorkoutSessions.FindAsync(sessionId);
+            if (session?.WorkoutPlanId == null || !await _context.PlanExercises.AnyAsync(pe => pe.PlanExerciseId == sessionExercise.PlanExerciseId.Value && pe.WorkoutPlanId == session.WorkoutPlanId))
+            {
+                return BadRequest($"PlanExercise {sessionExercise.PlanExerciseId} is not valid for the plan associated with session {sessionId}.");
+            }
+        }
+
+
+        sessionExercise.WorkoutSessionId = sessionId;
 
         _context.SessionExercises.Add(sessionExercise);
         await _context.SaveChangesAsync();
 
-        var dto = new SessionExerciseDetailDto(
-            sessionExercise.Id,
-            sessionExercise.ExerciseId,
-            exercise.Name,
-            sessionExercise.OrderInSession,
-            new List<SetLogDto>() // Başlangıçta boş set listesi
-        );
+        await _context.Entry(sessionExercise).Reference(se => se.Exercise).LoadAsync(); // İlişkiyi yükle
 
-        return Ok(dto); // Veya CreatedAtAction
+        return CreatedAtAction(nameof(GetSessionExercise), new { userId, sessionId, sessionExerciseId = sessionExercise.SessionExerciseId }, sessionExercise);
     }
 
-
-    // POST: api/workoutsessions/{sessionId}/exercises/{sessionExerciseId}/sets
-    // Bir seans egzersizi için set loglar (tamamlandı olarak işaretler/günceller)
-    [HttpPost("{sessionId}/exercises/{sessionExerciseId}/sets")]
-    public async Task<ActionResult<SetLogDto>> LogSet(int sessionId, int sessionExerciseId, [FromBody] LogSetDto logDto)
+    // PUT: api/users/{userId}/workoutsessions/{sessionId}/exercises/{sessionExerciseId}
+    [HttpPut("{sessionId}/exercises/{sessionExerciseId}")]
+    public async Task<IActionResult> UpdateSessionExercise(int userId, int sessionId, int sessionExerciseId, SessionExercise sessionExercise)
     {
-        var userId = GetCurrentUserId();
-        // SessionExercise'in kullanıcıya ait olduğunu doğrula (Session üzerinden)
-        var sessionExercise = await _context.SessionExercises
-            .Include(se => se.WorkoutSession)
-            .FirstOrDefaultAsync(se => se.Id == sessionExerciseId && se.WorkoutSessionId == sessionId && se.WorkoutSession.UserId == userId);
+        if (sessionExerciseId != sessionExercise.SessionExerciseId || sessionId != sessionExercise.WorkoutSessionId) return BadRequest("ID mismatch.");
 
+        if (!await WorkoutSessionExists(sessionId, userId))
+        {
+            return NotFound($"Session {sessionId} not found for user {userId}.");
+        }
+
+        // Gerekirse ExerciseId, PlanExerciseId geçerlilik kontrolleri eklenebilir
+
+        _context.Entry(sessionExercise).State = EntityState.Modified;
+        _context.Entry(sessionExercise).Property(x => x.WorkoutSessionId).IsModified = false; // Ana ID değiştirilemez
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!await _context.SessionExercises.AnyAsync(se => se.SessionExerciseId == sessionExerciseId && se.WorkoutSessionId == sessionId)) return NotFound();
+            else throw;
+        }
+
+        return NoContent();
+    }
+
+    // DELETE: api/users/{userId}/workoutsessions/{sessionId}/exercises/{sessionExerciseId}
+    [HttpDelete("{sessionId}/exercises/{sessionExerciseId}")]
+    public async Task<IActionResult> RemoveExerciseFromSession(int userId, int sessionId, int sessionExerciseId)
+    {
+        if (!await WorkoutSessionExists(sessionId, userId))
+        {
+            return NotFound($"Session {sessionId} not found for user {userId}.");
+        }
+
+        var sessionExercise = await _context.SessionExercises.FirstOrDefaultAsync(se => se.SessionExerciseId == sessionExerciseId && se.WorkoutSessionId == sessionId);
         if (sessionExercise == null)
         {
-            return NotFound(new { Message = "Seans egzersiz kaydı bulunamadı veya size ait değil." });
+            return NotFound($"Session exercise {sessionExerciseId} not found in session {sessionId}.");
         }
 
-        // Mevcut set logunu bul veya yenisini oluştur
+        _context.SessionExercises.Remove(sessionExercise); // Cascade delete SetLogs'u silmeli
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+
+    // --- SetLog Yönetimi ---
+
+    // GET: api/users/{userId}/workoutsessions/{sessionId}/exercises/{sessionExerciseId}/setlogs
+    [HttpGet("{sessionId}/exercises/{sessionExerciseId}/setlogs")]
+    public async Task<ActionResult<IEnumerable<SetLog>>> GetSetLogs(int userId, int sessionId, int sessionExerciseId)
+    {
+        // Zincirleme kontrol: User -> Session -> SessionExercise
+        if (!await WorkoutSessionExists(sessionId, userId)) return NotFound($"Session {sessionId} not found for user {userId}.");
+        if (!await _context.SessionExercises.AnyAsync(se => se.SessionExerciseId == sessionExerciseId && se.WorkoutSessionId == sessionId)) return NotFound($"Session exercise {sessionExerciseId} not found in session {sessionId}.");
+
+
+        return await _context.SetLogs
+                             .Where(sl => sl.SessionExerciseId == sessionExerciseId)
+                             .OrderBy(sl => sl.SetNumber)
+                             .ToListAsync();
+    }
+
+    // GET: api/users/{userId}/workoutsessions/{sessionId}/exercises/{sessionExerciseId}/setlogs/{setLogId}
+    [HttpGet("{sessionId}/exercises/{sessionExerciseId}/setlogs/{setLogId}")]
+    public async Task<ActionResult<SetLog>> GetSetLog(int userId, int sessionId, int sessionExerciseId, int setLogId)
+    {
+        if (!await WorkoutSessionExists(sessionId, userId)) return NotFound($"Session {sessionId} not found for user {userId}.");
+
         var setLog = await _context.SetLogs
-            .FirstOrDefaultAsync(sl => sl.SessionExerciseId == sessionExerciseId && sl.SetNumber == logDto.SetNumber);
+                                   .FirstOrDefaultAsync(sl => sl.SetLogId == setLogId && sl.SessionExerciseId == sessionExerciseId);
 
-        if (setLog == null) // Eğer set önceden oluşturulmadıysa (plandan gelmediyse)
+        // SessionExercise'in doğru seansa ait olduğunu da kontrol etmek daha güvenli olur
+        if (setLog == null || !await _context.SessionExercises.AnyAsync(se => se.SessionExerciseId == sessionExerciseId && se.WorkoutSessionId == sessionId))
         {
-            setLog = new SetLog
-            {
-                SessionExerciseId = sessionExerciseId,
-                SetNumber = logDto.SetNumber
-            };
-            _context.SetLogs.Add(setLog);
+            return NotFound($"Set log {setLogId} not found for session exercise {sessionExerciseId}.");
         }
 
-        // Bilgileri güncelle
-        setLog.Weight = logDto.Weight;
-        setLog.RepsCompleted = logDto.RepsCompleted;
-        setLog.IsCompleted = logDto.IsCompleted;
-        setLog.CompletedAt = logDto.IsCompleted ? DateTime.UtcNow : (DateTime?)null; // Tamamlandıysa zamanı kaydet
-
-        await _context.SaveChangesAsync();
-
-        var dto = new SetLogDto(
-            setLog.Id,
-            setLog.SetNumber,
-            setLog.Weight,
-            setLog.RepsCompleted,
-            setLog.IsCompleted,
-            setLog.CompletedAt
-        );
-        return Ok(dto);
+        return setLog;
     }
 
 
-    // PUT: api/workoutsessions/{sessionId}/end
-    // Bir seansı bitirir (süreyi, notları günceller)
-    [HttpPut("{sessionId}/end")]
-    public async Task<IActionResult> EndSession(int sessionId, [FromBody] EndWorkoutSessionDto endDto)
+    // POST: api/users/{userId}/workoutsessions/{sessionId}/exercises/{sessionExerciseId}/setlogs
+    [HttpPost("{sessionId}/exercises/{sessionExerciseId}/setlogs")]
+    public async Task<ActionResult<SetLog>> AddSetLog(int userId, int sessionId, int sessionExerciseId, SetLog setLog)
     {
-        var userId = GetCurrentUserId();
-        var sessionToEnd = await _context.WorkoutSessions
-                                   .FirstOrDefaultAsync(ws => ws.Id == sessionId && ws.UserId == userId);
+        if (!await WorkoutSessionExists(sessionId, userId)) return NotFound($"Session {sessionId} not found for user {userId}.");
+        if (!await _context.SessionExercises.AnyAsync(se => se.SessionExerciseId == sessionExerciseId && se.WorkoutSessionId == sessionId)) return NotFound($"Session exercise {sessionExerciseId} not found in session {sessionId}.");
 
-        if (sessionToEnd == null)
+        setLog.SessionExerciseId = sessionExerciseId;
+        // CreatedAt null olabilir veya otomatik atanabilir
+
+        _context.SetLogs.Add(setLog);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetSetLog), new { userId, sessionId, sessionExerciseId, setLogId = setLog.SetLogId }, setLog);
+    }
+
+    // PUT: api/users/{userId}/workoutsessions/{sessionId}/exercises/{sessionExerciseId}/setlogs/{setLogId}
+    [HttpPut("{sessionId}/exercises/{sessionExerciseId}/setlogs/{setLogId}")]
+    public async Task<IActionResult> UpdateSetLog(int userId, int sessionId, int sessionExerciseId, int setLogId, SetLog setLog)
+    {
+        if (setLogId != setLog.SetLogId || sessionExerciseId != setLog.SessionExerciseId) return BadRequest("ID mismatch.");
+
+        // Kontrol zinciri
+        if (!await WorkoutSessionExists(sessionId, userId)) return NotFound($"Session {sessionId} not found for user {userId}.");
+        if (!await _context.SessionExercises.AnyAsync(se => se.SessionExerciseId == sessionExerciseId && se.WorkoutSessionId == sessionId)) return NotFound($"Session exercise {sessionExerciseId} not found in session {sessionId}.");
+
+        _context.Entry(setLog).State = EntityState.Modified;
+        _context.Entry(setLog).Property(x => x.SessionExerciseId).IsModified = false;
+
+        try
         {
-            return NotFound(new { Message = "Antrenman seansı bulunamadı veya size ait değil." });
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!await _context.SetLogs.AnyAsync(sl => sl.SetLogId == setLogId && sl.SessionExerciseId == sessionExerciseId)) return NotFound();
+            else throw;
         }
 
-        sessionToEnd.DurationMinutes = endDto.DurationMinutes ?? (int)(DateTime.UtcNow - sessionToEnd.SessionDate).TotalMinutes; // Otomatik süre veya DTO'dan gelen
-        sessionToEnd.Notes = endDto.Notes ?? sessionToEnd.Notes; // Yeni not veya mevcutu koru
-
-        await _context.SaveChangesAsync();
         return NoContent();
     }
 
 
-    // DELETE: api/workoutsessions/{sessionId}
-    // Bir antrenman seansını tamamen siler
-    [HttpDelete("{sessionId}")]
-    public async Task<IActionResult> DeleteSession(int sessionId)
+    // DELETE: api/users/{userId}/workoutsessions/{sessionId}/exercises/{sessionExerciseId}/setlogs/{setLogId}
+    [HttpDelete("{sessionId}/exercises/{sessionExerciseId}/setlogs/{setLogId}")]
+    public async Task<IActionResult> DeleteSetLog(int userId, int sessionId, int sessionExerciseId, int setLogId)
     {
-        var userId = GetCurrentUserId();
-        var sessionToDelete = await _context.WorkoutSessions
-            .Include(ws => ws.SessionExercises) // İlişkili egzersizleri yükle
-                .ThenInclude(se => se.SetLogs) // İlişkili set loglarını yükle
-            .FirstOrDefaultAsync(ws => ws.Id == sessionId && ws.UserId == userId);
+        // Kontrol zinciri
+        if (!await WorkoutSessionExists(sessionId, userId)) return NotFound($"Session {sessionId} not found for user {userId}.");
+        if (!await _context.SessionExercises.AnyAsync(se => se.SessionExerciseId == sessionExerciseId && se.WorkoutSessionId == sessionId)) return NotFound($"Session exercise {sessionExerciseId} not found in session {sessionId}.");
 
-        if (sessionToDelete == null)
-        {
-            return NotFound(new { Message = "Antrenman seansı bulunamadı veya size ait değil." });
-        }
+        var setLog = await _context.SetLogs.FirstOrDefaultAsync(sl => sl.SetLogId == setLogId && sl.SessionExerciseId == sessionExerciseId);
+        if (setLog == null) return NotFound($"Set log {setLogId} not found.");
 
-        // Önce bağlı SetLog'ları silmek gerekebilir (Cascade yoksa)
-        // _context.SetLogs.RemoveRange(sessionToDelete.SessionExercises.SelectMany(se => se.SetLogs));
-        // Sonra SessionExercise'leri silmek gerekebilir (Cascade yoksa)
-        // _context.SessionExercises.RemoveRange(sessionToDelete.SessionExercises);
-        // En son Session'ı sil
-        _context.WorkoutSessions.Remove(sessionToDelete); // Cascade varsa hepsi gider
-
+        _context.SetLogs.Remove(setLog);
         await _context.SaveChangesAsync();
+
         return NoContent();
+    }
+
+
+    private async Task<bool> UserExists(int userId)
+    {
+        return await _context.Users.AnyAsync(e => e.UserId == userId);
+    }
+    private async Task<bool> WorkoutSessionExists(int sessionId, int userId)
+    {
+        return await _context.WorkoutSessions.AnyAsync(e => e.WorkoutSessionId == sessionId && e.UserId == userId);
     }
 }

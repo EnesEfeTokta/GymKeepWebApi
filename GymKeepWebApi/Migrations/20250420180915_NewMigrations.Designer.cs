@@ -11,8 +11,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GymKeepWebApi.Migrations
 {
     [DbContext(typeof(MyDbContext))]
-    [Migration("20250414090231_UpdateDbContextWithAllEntitiesAndRelations")]
-    partial class UpdateDbContextWithAllEntitiesAndRelations
+    [Migration("20250420180915_NewMigrations")]
+    partial class NewMigrations
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -26,272 +26,313 @@ namespace GymKeepWebApi.Migrations
 
             modelBuilder.Entity("GymKeepWebApi.Models.Achievement", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("AchievementId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("AchievementId"));
 
                     b.Property<DateTime>("AchievedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("AchievedAt");
 
                     b.Property<string>("AchievementDescription")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                        .HasColumnType("text")
+                        .HasColumnName("AchievementDescription");
 
                     b.Property<string>("AchievementName")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text")
+                        .HasColumnName("AchievementName");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("UserId");
 
-                    b.HasKey("Id");
+                    b.HasKey("AchievementId");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("achievements", (string)null);
+                    b.ToTable("Achievements");
                 });
 
             modelBuilder.Entity("GymKeepWebApi.Models.CalorieCalculation", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("CalorieCalculationId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("CalorieCalculationId"));
 
                     b.Property<string>("ActivityLevel")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("text")
+                        .HasColumnName("ActivityLevel");
 
                     b.Property<decimal>("AdjustedCalories")
-                        .HasColumnType("decimal(10, 2)");
+                        .HasColumnType("decimal(10, 2)")
+                        .HasColumnName("AdjustedCalories");
 
                     b.Property<int>("Age")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("Age");
 
                     b.Property<DateTime>("CalculationDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CalculationDate");
 
                     b.Property<string>("Gender")
                         .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
+                        .HasColumnType("text")
+                        .HasColumnName("Gender");
 
                     b.Property<string>("Goal")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("text")
+                        .HasColumnName("Goal");
 
                     b.Property<decimal>("Height")
-                        .HasColumnType("decimal(5, 2)");
+                        .HasColumnType("decimal(5, 2)")
+                        .HasColumnName("Height");
 
                     b.Property<decimal>("Tdee")
-                        .HasColumnType("decimal(10, 2)");
+                        .HasColumnType("decimal(10, 2)")
+                        .HasColumnName("Tdee");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("UserId");
 
                     b.Property<decimal>("Weight")
-                        .HasColumnType("decimal(6, 2)");
+                        .HasColumnType("decimal(5, 2)")
+                        .HasColumnName("Weight");
 
-                    b.HasKey("Id");
+                    b.HasKey("CalorieCalculationId");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("calorie_calculations", (string)null);
+                    b.ToTable("CalorieCalculations");
                 });
 
             modelBuilder.Entity("GymKeepWebApi.Models.DifficultyLevel", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("DifficultyLevelId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("DifficultyLevelId"));
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("text")
+                        .HasColumnName("Name");
 
-                    b.HasKey("Id");
+                    b.HasKey("DifficultyLevelId");
 
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("difficulty_levels", (string)null);
+                    b.ToTable("DifficultyLevels");
                 });
 
             modelBuilder.Entity("GymKeepWebApi.Models.Exercise", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("ExerciseId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ExerciseId"));
 
                     b.Property<string>("Description")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("Description");
 
                     b.Property<int>("DifficultyLevelId")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("DifficultyLevelId");
 
                     b.Property<string>("ImageUrl")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("ImageUrl");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)");
+                        .HasColumnType("text")
+                        .HasColumnName("Name");
 
                     b.Property<int>("RegionId")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("RegionId");
 
                     b.Property<string>("VideoUrl")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("VideoUrl");
 
-                    b.HasKey("Id");
+                    b.HasKey("ExerciseId");
 
                     b.HasIndex("DifficultyLevelId");
 
                     b.HasIndex("RegionId");
 
-                    b.ToTable("exercises", (string)null);
+                    b.ToTable("Exercises");
                 });
 
             modelBuilder.Entity("GymKeepWebApi.Models.ExerciseRegion", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("ExerciseRegionId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ExerciseRegionId"));
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text")
+                        .HasColumnName("Name");
 
-                    b.HasKey("Id");
+                    b.HasKey("ExerciseRegionId");
 
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("exercise_regions", (string)null);
+                    b.ToTable("ExerciseRegions");
                 });
 
             modelBuilder.Entity("GymKeepWebApi.Models.PlanExercise", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("PlanExerciseId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PlanExerciseId"));
 
                     b.Property<int>("ExerciseId")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("ExerciseId");
 
                     b.Property<int?>("OrderInPlan")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("OrderInPlan");
 
                     b.Property<int>("Reps")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("Reps");
 
                     b.Property<int?>("RestDurationSeconds")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("RestDurationSeconds");
 
                     b.Property<int>("Sets")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("Sets");
 
                     b.Property<int>("WorkoutPlanId")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("WorkoutPlanId");
 
-                    b.HasKey("Id");
+                    b.HasKey("PlanExerciseId");
 
                     b.HasIndex("ExerciseId");
 
                     b.HasIndex("WorkoutPlanId");
 
-                    b.ToTable("plan_exercises", (string)null);
+                    b.ToTable("PlanExercises");
                 });
 
             modelBuilder.Entity("GymKeepWebApi.Models.RegionalWorkout", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("RegionalWorkoutId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("RegionalWorkoutId"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreatedAt");
+
+                    b.Property<int>("ExerciseRegionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("ExerciseRegionId");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)");
+                        .HasColumnType("text")
+                        .HasColumnName("Name");
 
-                    b.Property<string>("Region")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                    b.HasKey("RegionalWorkoutId");
 
-                    b.HasKey("Id");
+                    b.HasIndex("ExerciseRegionId");
 
-                    b.ToTable("regional_workouts", (string)null);
+                    b.ToTable("RegionalWorkouts");
                 });
 
             modelBuilder.Entity("GymKeepWebApi.Models.RegionalWorkoutExercise", b =>
                 {
-                    b.Property<int>("WorkoutId")
+                    b.Property<int>("RegionalWorkoutExerciseId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    b.Property<string>("ExerciseName")
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)");
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("RegionalWorkoutExerciseId"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreatedAt");
+
+                    b.Property<int>("ExerciseId")
+                        .HasColumnType("integer")
+                        .HasColumnName("ExerciseId");
 
                     b.Property<int?>("OrderInWorkout")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("OrderInWorkout");
 
                     b.Property<int?>("Reps")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("Reps");
 
                     b.Property<int?>("Sets")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("Sets");
 
-                    b.HasKey("WorkoutId", "ExerciseName");
+                    b.Property<int>("WorkoutId")
+                        .HasColumnType("integer")
+                        .HasColumnName("WorkoutId");
 
-                    b.ToTable("regional_workout_exercises", (string)null);
+                    b.HasKey("RegionalWorkoutExerciseId");
+
+                    b.HasIndex("ExerciseId");
+
+                    b.HasIndex("WorkoutId");
+
+                    b.ToTable("RegionalWorkoutExercises");
                 });
 
             modelBuilder.Entity("GymKeepWebApi.Models.SessionExercise", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("SessionExerciseId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("SessionExerciseId"));
 
                     b.Property<int>("ExerciseId")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("ExerciseId");
 
                     b.Property<int?>("OrderInSession")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("OrderInSession");
 
                     b.Property<int?>("PlanExerciseId")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("PlanExerciseId");
 
                     b.Property<int>("WorkoutSessionId")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("WorkoutSessionId");
 
-                    b.HasKey("Id");
+                    b.HasKey("SessionExerciseId");
 
                     b.HasIndex("ExerciseId");
 
@@ -299,71 +340,80 @@ namespace GymKeepWebApi.Migrations
 
                     b.HasIndex("WorkoutSessionId");
 
-                    b.ToTable("session_exercises", (string)null);
+                    b.ToTable("SessionExercises");
                 });
 
             modelBuilder.Entity("GymKeepWebApi.Models.SetLog", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("SetLogId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("SetLogId"));
 
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreatedAt");
 
                     b.Property<bool>("IsCompleted")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("IsCompleted");
 
                     b.Property<int?>("RepsCompleted")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("RepsCompleted");
 
                     b.Property<int>("SessionExerciseId")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("SessionExerciseId");
 
                     b.Property<int>("SetNumber")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("SetNumber");
 
                     b.Property<decimal?>("Weight")
-                        .HasColumnType("decimal(10, 2)");
+                        .HasColumnType("numeric")
+                        .HasColumnName("Weight");
 
-                    b.HasKey("Id");
+                    b.HasKey("SetLogId");
 
                     b.HasIndex("SessionExerciseId");
 
-                    b.ToTable("set_logs", (string)null);
+                    b.ToTable("SetLogs");
                 });
 
             modelBuilder.Entity("GymKeepWebApi.Models.User", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("UserId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("UserId"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreatedAt");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)");
+                        .HasColumnType("text")
+                        .HasColumnName("Email");
 
                     b.Property<string>("Password")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("Password");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("UpdatedAt");
 
                     b.Property<string>("Username")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text")
+                        .HasColumnName("Username");
 
-                    b.HasKey("Id");
+                    b.HasKey("UserId");
 
                     b.HasIndex("Email")
                         .IsUnique();
@@ -371,7 +421,7 @@ namespace GymKeepWebApi.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("GymKeepWebApi.Models.UserSetting", b =>
@@ -383,95 +433,110 @@ namespace GymKeepWebApi.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int?>("DailyGoal")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("DailyGoal");
 
                     b.Property<bool>("IsDarkMode")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("IsDarkMode");
 
                     b.Property<TimeSpan?>("NotificationTime")
-                        .HasColumnType("interval");
+                        .HasColumnType("interval")
+                        .HasColumnName("NotificationTime");
 
                     b.Property<bool>("NotificationsEnabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("NotificationsEnabled");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("UpdatedAt");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("UserId");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId")
+                        .IsUnique();
 
-                    b.ToTable("user_settings", (string)null);
+                    b.ToTable("UserSettings");
                 });
 
             modelBuilder.Entity("GymKeepWebApi.Models.WorkoutPlan", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("WorkoutPlanId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("WorkoutPlanId"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreatedAt");
 
                     b.Property<string>("Description")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("Description");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasColumnType("text")
+                        .HasColumnName("Name");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("UserId");
 
-                    b.HasKey("Id");
+                    b.HasKey("WorkoutPlanId");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("workout_plans", (string)null);
+                    b.ToTable("WorkoutPlans");
                 });
 
             modelBuilder.Entity("GymKeepWebApi.Models.WorkoutSession", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("WorkoutSessionId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("WorkoutSessionId"));
 
                     b.Property<int?>("DurationMinutes")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("DurationMinutes");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("Notes");
 
                     b.Property<DateTime>("SessionDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("SessionDate");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("UserId");
 
                     b.Property<int?>("WorkoutPlanId")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("WorkoutPlanId");
 
-                    b.HasKey("Id");
+                    b.HasKey("WorkoutSessionId");
 
                     b.HasIndex("UserId");
 
                     b.HasIndex("WorkoutPlanId");
 
-                    b.ToTable("workout_sessions", (string)null);
+                    b.ToTable("WorkoutSessions");
                 });
 
             modelBuilder.Entity("GymKeepWebApi.Models.Achievement", b =>
                 {
                     b.HasOne("GymKeepWebApi.Models.User", "User")
-                        .WithMany("Achievements")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -482,7 +547,7 @@ namespace GymKeepWebApi.Migrations
             modelBuilder.Entity("GymKeepWebApi.Models.CalorieCalculation", b =>
                 {
                     b.HasOne("GymKeepWebApi.Models.User", "User")
-                        .WithMany("CalorieCalculations")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -493,13 +558,13 @@ namespace GymKeepWebApi.Migrations
             modelBuilder.Entity("GymKeepWebApi.Models.Exercise", b =>
                 {
                     b.HasOne("GymKeepWebApi.Models.DifficultyLevel", "DifficultyLevel")
-                        .WithMany("Exercises")
+                        .WithMany()
                         .HasForeignKey("DifficultyLevelId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("GymKeepWebApi.Models.ExerciseRegion", "ExerciseRegion")
-                        .WithMany("Exercises")
+                        .WithMany()
                         .HasForeignKey("RegionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -512,13 +577,13 @@ namespace GymKeepWebApi.Migrations
             modelBuilder.Entity("GymKeepWebApi.Models.PlanExercise", b =>
                 {
                     b.HasOne("GymKeepWebApi.Models.Exercise", "Exercise")
-                        .WithMany("PlanExercises")
+                        .WithMany()
                         .HasForeignKey("ExerciseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("GymKeepWebApi.Models.WorkoutPlan", "WorkoutPlan")
-                        .WithMany("PlanExercises")
+                        .WithMany()
                         .HasForeignKey("WorkoutPlanId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -528,13 +593,32 @@ namespace GymKeepWebApi.Migrations
                     b.Navigation("WorkoutPlan");
                 });
 
+            modelBuilder.Entity("GymKeepWebApi.Models.RegionalWorkout", b =>
+                {
+                    b.HasOne("GymKeepWebApi.Models.ExerciseRegion", "ExerciseRegion")
+                        .WithMany()
+                        .HasForeignKey("ExerciseRegionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ExerciseRegion");
+                });
+
             modelBuilder.Entity("GymKeepWebApi.Models.RegionalWorkoutExercise", b =>
                 {
+                    b.HasOne("GymKeepWebApi.Models.Exercise", "Exercise")
+                        .WithMany()
+                        .HasForeignKey("ExerciseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("GymKeepWebApi.Models.RegionalWorkout", "RegionalWorkout")
-                        .WithMany("RegionalWorkoutExercises")
+                        .WithMany()
                         .HasForeignKey("WorkoutId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Exercise");
 
                     b.Navigation("RegionalWorkout");
                 });
@@ -542,18 +626,18 @@ namespace GymKeepWebApi.Migrations
             modelBuilder.Entity("GymKeepWebApi.Models.SessionExercise", b =>
                 {
                     b.HasOne("GymKeepWebApi.Models.Exercise", "Exercise")
-                        .WithMany("SessionExercises")
+                        .WithMany()
                         .HasForeignKey("ExerciseId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("GymKeepWebApi.Models.PlanExercise", "PlanExercise")
-                        .WithMany("SessionExercises")
+                        .WithMany()
                         .HasForeignKey("PlanExerciseId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("GymKeepWebApi.Models.WorkoutSession", "WorkoutSession")
-                        .WithMany("SessionExercises")
+                        .WithMany()
                         .HasForeignKey("WorkoutSessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -568,7 +652,7 @@ namespace GymKeepWebApi.Migrations
             modelBuilder.Entity("GymKeepWebApi.Models.SetLog", b =>
                 {
                     b.HasOne("GymKeepWebApi.Models.SessionExercise", "SessionExercise")
-                        .WithMany("SetLogs")
+                        .WithMany()
                         .HasForeignKey("SessionExerciseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -579,8 +663,8 @@ namespace GymKeepWebApi.Migrations
             modelBuilder.Entity("GymKeepWebApi.Models.UserSetting", b =>
                 {
                     b.HasOne("GymKeepWebApi.Models.User", "User")
-                        .WithMany("UserSettings")
-                        .HasForeignKey("UserId")
+                        .WithOne()
+                        .HasForeignKey("GymKeepWebApi.Models.UserSetting", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -590,7 +674,7 @@ namespace GymKeepWebApi.Migrations
             modelBuilder.Entity("GymKeepWebApi.Models.WorkoutPlan", b =>
                 {
                     b.HasOne("GymKeepWebApi.Models.User", "User")
-                        .WithMany("WorkoutPlans")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -601,76 +685,19 @@ namespace GymKeepWebApi.Migrations
             modelBuilder.Entity("GymKeepWebApi.Models.WorkoutSession", b =>
                 {
                     b.HasOne("GymKeepWebApi.Models.User", "User")
-                        .WithMany("WorkoutSessions")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("GymKeepWebApi.Models.WorkoutPlan", "WorkoutPlan")
-                        .WithMany("WorkoutSessions")
+                        .WithMany()
                         .HasForeignKey("WorkoutPlanId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("User");
 
                     b.Navigation("WorkoutPlan");
-                });
-
-            modelBuilder.Entity("GymKeepWebApi.Models.DifficultyLevel", b =>
-                {
-                    b.Navigation("Exercises");
-                });
-
-            modelBuilder.Entity("GymKeepWebApi.Models.Exercise", b =>
-                {
-                    b.Navigation("PlanExercises");
-
-                    b.Navigation("SessionExercises");
-                });
-
-            modelBuilder.Entity("GymKeepWebApi.Models.ExerciseRegion", b =>
-                {
-                    b.Navigation("Exercises");
-                });
-
-            modelBuilder.Entity("GymKeepWebApi.Models.PlanExercise", b =>
-                {
-                    b.Navigation("SessionExercises");
-                });
-
-            modelBuilder.Entity("GymKeepWebApi.Models.RegionalWorkout", b =>
-                {
-                    b.Navigation("RegionalWorkoutExercises");
-                });
-
-            modelBuilder.Entity("GymKeepWebApi.Models.SessionExercise", b =>
-                {
-                    b.Navigation("SetLogs");
-                });
-
-            modelBuilder.Entity("GymKeepWebApi.Models.User", b =>
-                {
-                    b.Navigation("Achievements");
-
-                    b.Navigation("CalorieCalculations");
-
-                    b.Navigation("UserSettings");
-
-                    b.Navigation("WorkoutPlans");
-
-                    b.Navigation("WorkoutSessions");
-                });
-
-            modelBuilder.Entity("GymKeepWebApi.Models.WorkoutPlan", b =>
-                {
-                    b.Navigation("PlanExercises");
-
-                    b.Navigation("WorkoutSessions");
-                });
-
-            modelBuilder.Entity("GymKeepWebApi.Models.WorkoutSession", b =>
-                {
-                    b.Navigation("SessionExercises");
                 });
 #pragma warning restore 612, 618
         }

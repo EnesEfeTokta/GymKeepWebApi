@@ -1,28 +1,35 @@
-﻿using GymKeepWebApi.Models;
-using GymKeepWebApi.Dtos;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization;
+using GymKeepWebApi.Models;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 [ApiController]
-[Route("api/exerciseregions")] // Çoğul isim
-public class ExerciseRegionController : ControllerBase
+[Route("api/[controller]")]
+public class DifficultyLevelController : ControllerBase
 {
     private readonly MyDbContext _context;
 
-    public ExerciseRegionController(MyDbContext context)
+    public DifficultyLevelController(MyDbContext context)
     {
         _context = context;
     }
 
-    // GET: api/exerciseregions
+    // GET: api/difficultylevels
     [HttpGet]
-    [AllowAnonymous] // Herkes bölgeleri görebilir
-    public async Task<ActionResult<IEnumerable<ExerciseRegionDto>>> GetExerciseRegions()
+    public async Task<ActionResult<IEnumerable<DifficultyLevel>>> GetDifficultyLevels()
     {
-        var regions = await _context.ExerciseRegions
-            .Select(er => new ExerciseRegionDto(er.Id, er.Name))
-            .ToListAsync();
-        return Ok(regions);
+        return await _context.DifficultyLevels.ToListAsync();
     }
+
+    // GET: api/difficultylevels/{id}
+    [HttpGet("{id}")]
+    public async Task<ActionResult<DifficultyLevel>> GetDifficultyLevel(int id)
+    {
+        var difficultyLevel = await _context.DifficultyLevels.FindAsync(id);
+        if (difficultyLevel == null) return NotFound();
+        return difficultyLevel;
+    }
+    // Genellikle lookup tabloları için POST/PUT/DELETE adminlere özel olur.
 }

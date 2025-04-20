@@ -7,76 +7,61 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GymKeepWebApi.Migrations
 {
     /// <inheritdoc />
-    public partial class UpdateDbContextWithAllEntitiesAndRelations : Migration
+    public partial class NewMigrations : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "difficulty_levels",
+                name: "DifficultyLevels",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
+                    DifficultyLevelId = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Name = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false)
+                    Name = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_difficulty_levels", x => x.Id);
+                    table.PrimaryKey("PK_DifficultyLevels", x => x.DifficultyLevelId);
                 });
 
             migrationBuilder.CreateTable(
-                name: "exercise_regions",
+                name: "ExerciseRegions",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
+                    ExerciseRegionId = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false)
+                    Name = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_exercise_regions", x => x.Id);
+                    table.PrimaryKey("PK_ExerciseRegions", x => x.ExerciseRegionId);
                 });
 
             migrationBuilder.CreateTable(
-                name: "regional_workouts",
+                name: "Users",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
+                    UserId = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Region = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    Name = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_regional_workouts", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "users",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Username = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    Email = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    Username = table.Column<string>(type: "text", nullable: false),
+                    Email = table.Column<string>(type: "text", nullable: false),
                     Password = table.Column<string>(type: "text", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_users", x => x.Id);
+                    table.PrimaryKey("PK_Users", x => x.UserId);
                 });
 
             migrationBuilder.CreateTable(
-                name: "exercises",
+                name: "Exercises",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
+                    ExerciseId = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Name = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
                     Description = table.Column<string>(type: "text", nullable: true),
                     VideoUrl = table.Column<string>(type: "text", nullable: true),
                     ImageUrl = table.Column<string>(type: "text", nullable: true),
@@ -85,77 +70,76 @@ namespace GymKeepWebApi.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_exercises", x => x.Id);
+                    table.PrimaryKey("PK_Exercises", x => x.ExerciseId);
                     table.ForeignKey(
-                        name: "FK_exercises_difficulty_levels_DifficultyLevelId",
+                        name: "FK_Exercises_DifficultyLevels_DifficultyLevelId",
                         column: x => x.DifficultyLevelId,
-                        principalTable: "difficulty_levels",
-                        principalColumn: "Id",
+                        principalTable: "DifficultyLevels",
+                        principalColumn: "DifficultyLevelId",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_exercises_exercise_regions_RegionId",
+                        name: "FK_Exercises_ExerciseRegions_RegionId",
                         column: x => x.RegionId,
-                        principalTable: "exercise_regions",
-                        principalColumn: "Id",
+                        principalTable: "ExerciseRegions",
+                        principalColumn: "ExerciseRegionId",
                         onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
-                name: "regional_workout_exercises",
+                name: "RegionalWorkouts",
                 columns: table => new
                 {
-                    WorkoutId = table.Column<int>(type: "integer", nullable: false),
-                    ExerciseName = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
-                    Sets = table.Column<int>(type: "integer", nullable: true),
-                    Reps = table.Column<int>(type: "integer", nullable: true),
-                    OrderInWorkout = table.Column<int>(type: "integer", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    RegionalWorkoutId = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ExerciseRegionId = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_regional_workout_exercises", x => new { x.WorkoutId, x.ExerciseName });
+                    table.PrimaryKey("PK_RegionalWorkouts", x => x.RegionalWorkoutId);
                     table.ForeignKey(
-                        name: "FK_regional_workout_exercises_regional_workouts_WorkoutId",
-                        column: x => x.WorkoutId,
-                        principalTable: "regional_workouts",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        name: "FK_RegionalWorkouts_ExerciseRegions_ExerciseRegionId",
+                        column: x => x.ExerciseRegionId,
+                        principalTable: "ExerciseRegions",
+                        principalColumn: "ExerciseRegionId",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
-                name: "achievements",
+                name: "Achievements",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
+                    AchievementId = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    AchievementName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    AchievementDescription = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    AchievementName = table.Column<string>(type: "text", nullable: false),
+                    AchievementDescription = table.Column<string>(type: "text", nullable: true),
                     AchievedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UserId = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_achievements", x => x.Id);
+                    table.PrimaryKey("PK_Achievements", x => x.AchievementId);
                     table.ForeignKey(
-                        name: "FK_achievements_users_UserId",
+                        name: "FK_Achievements_Users_UserId",
                         column: x => x.UserId,
-                        principalTable: "users",
-                        principalColumn: "Id",
+                        principalTable: "Users",
+                        principalColumn: "UserId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "calorie_calculations",
+                name: "CalorieCalculations",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
+                    CalorieCalculationId = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Age = table.Column<int>(type: "integer", nullable: false),
                     Height = table.Column<decimal>(type: "numeric(5,2)", nullable: false),
-                    Weight = table.Column<decimal>(type: "numeric(6,2)", nullable: false),
-                    Gender = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
-                    ActivityLevel = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    Goal = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Weight = table.Column<decimal>(type: "numeric(5,2)", nullable: false),
+                    Gender = table.Column<string>(type: "text", nullable: false),
+                    ActivityLevel = table.Column<string>(type: "text", nullable: false),
+                    Goal = table.Column<string>(type: "text", nullable: false),
                     Tdee = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
                     AdjustedCalories = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
                     CalculationDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -163,17 +147,17 @@ namespace GymKeepWebApi.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_calorie_calculations", x => x.Id);
+                    table.PrimaryKey("PK_CalorieCalculations", x => x.CalorieCalculationId);
                     table.ForeignKey(
-                        name: "FK_calorie_calculations_users_UserId",
+                        name: "FK_CalorieCalculations_Users_UserId",
                         column: x => x.UserId,
-                        principalTable: "users",
-                        principalColumn: "Id",
+                        principalTable: "Users",
+                        principalColumn: "UserId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "user_settings",
+                name: "UserSettings",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
@@ -187,42 +171,72 @@ namespace GymKeepWebApi.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_user_settings", x => x.Id);
+                    table.PrimaryKey("PK_UserSettings", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_user_settings_users_UserId",
+                        name: "FK_UserSettings_Users_UserId",
                         column: x => x.UserId,
-                        principalTable: "users",
-                        principalColumn: "Id",
+                        principalTable: "Users",
+                        principalColumn: "UserId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "workout_plans",
+                name: "WorkoutPlans",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
+                    WorkoutPlanId = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
                     Description = table.Column<string>(type: "text", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UserId = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_workout_plans", x => x.Id);
+                    table.PrimaryKey("PK_WorkoutPlans", x => x.WorkoutPlanId);
                     table.ForeignKey(
-                        name: "FK_workout_plans_users_UserId",
+                        name: "FK_WorkoutPlans_Users_UserId",
                         column: x => x.UserId,
-                        principalTable: "users",
-                        principalColumn: "Id",
+                        principalTable: "Users",
+                        principalColumn: "UserId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "plan_exercises",
+                name: "RegionalWorkoutExercises",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
+                    RegionalWorkoutExerciseId = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Sets = table.Column<int>(type: "integer", nullable: true),
+                    Reps = table.Column<int>(type: "integer", nullable: true),
+                    OrderInWorkout = table.Column<int>(type: "integer", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    WorkoutId = table.Column<int>(type: "integer", nullable: false),
+                    ExerciseId = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RegionalWorkoutExercises", x => x.RegionalWorkoutExerciseId);
+                    table.ForeignKey(
+                        name: "FK_RegionalWorkoutExercises_Exercises_ExerciseId",
+                        column: x => x.ExerciseId,
+                        principalTable: "Exercises",
+                        principalColumn: "ExerciseId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_RegionalWorkoutExercises_RegionalWorkouts_WorkoutId",
+                        column: x => x.WorkoutId,
+                        principalTable: "RegionalWorkouts",
+                        principalColumn: "RegionalWorkoutId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PlanExercises",
+                columns: table => new
+                {
+                    PlanExerciseId = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Sets = table.Column<int>(type: "integer", nullable: false),
                     Reps = table.Column<int>(type: "integer", nullable: false),
@@ -233,26 +247,26 @@ namespace GymKeepWebApi.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_plan_exercises", x => x.Id);
+                    table.PrimaryKey("PK_PlanExercises", x => x.PlanExerciseId);
                     table.ForeignKey(
-                        name: "FK_plan_exercises_exercises_ExerciseId",
+                        name: "FK_PlanExercises_Exercises_ExerciseId",
                         column: x => x.ExerciseId,
-                        principalTable: "exercises",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalTable: "Exercises",
+                        principalColumn: "ExerciseId",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_plan_exercises_workout_plans_WorkoutPlanId",
+                        name: "FK_PlanExercises_WorkoutPlans_WorkoutPlanId",
                         column: x => x.WorkoutPlanId,
-                        principalTable: "workout_plans",
-                        principalColumn: "Id",
+                        principalTable: "WorkoutPlans",
+                        principalColumn: "WorkoutPlanId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "workout_sessions",
+                name: "WorkoutSessions",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
+                    WorkoutSessionId = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     SessionDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     DurationMinutes = table.Column<int>(type: "integer", nullable: true),
@@ -262,26 +276,26 @@ namespace GymKeepWebApi.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_workout_sessions", x => x.Id);
+                    table.PrimaryKey("PK_WorkoutSessions", x => x.WorkoutSessionId);
                     table.ForeignKey(
-                        name: "FK_workout_sessions_users_UserId",
+                        name: "FK_WorkoutSessions_Users_UserId",
                         column: x => x.UserId,
-                        principalTable: "users",
-                        principalColumn: "Id",
+                        principalTable: "Users",
+                        principalColumn: "UserId",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_workout_sessions_workout_plans_WorkoutPlanId",
+                        name: "FK_WorkoutSessions_WorkoutPlans_WorkoutPlanId",
                         column: x => x.WorkoutPlanId,
-                        principalTable: "workout_plans",
-                        principalColumn: "Id",
+                        principalTable: "WorkoutPlans",
+                        principalColumn: "WorkoutPlanId",
                         onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
-                name: "session_exercises",
+                name: "SessionExercises",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
+                    SessionExerciseId = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     OrderInSession = table.Column<int>(type: "integer", nullable: true),
                     WorkoutSessionId = table.Column<int>(type: "integer", nullable: false),
@@ -290,143 +304,159 @@ namespace GymKeepWebApi.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_session_exercises", x => x.Id);
+                    table.PrimaryKey("PK_SessionExercises", x => x.SessionExerciseId);
                     table.ForeignKey(
-                        name: "FK_session_exercises_exercises_ExerciseId",
+                        name: "FK_SessionExercises_Exercises_ExerciseId",
                         column: x => x.ExerciseId,
-                        principalTable: "exercises",
-                        principalColumn: "Id",
+                        principalTable: "Exercises",
+                        principalColumn: "ExerciseId",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_session_exercises_plan_exercises_PlanExerciseId",
+                        name: "FK_SessionExercises_PlanExercises_PlanExerciseId",
                         column: x => x.PlanExerciseId,
-                        principalTable: "plan_exercises",
-                        principalColumn: "Id",
+                        principalTable: "PlanExercises",
+                        principalColumn: "PlanExerciseId",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_session_exercises_workout_sessions_WorkoutSessionId",
+                        name: "FK_SessionExercises_WorkoutSessions_WorkoutSessionId",
                         column: x => x.WorkoutSessionId,
-                        principalTable: "workout_sessions",
-                        principalColumn: "Id",
+                        principalTable: "WorkoutSessions",
+                        principalColumn: "WorkoutSessionId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "set_logs",
+                name: "SetLogs",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
+                    SetLogId = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     SetNumber = table.Column<int>(type: "integer", nullable: false),
-                    Weight = table.Column<decimal>(type: "numeric(10,2)", nullable: true),
+                    Weight = table.Column<decimal>(type: "numeric", nullable: true),
                     RepsCompleted = table.Column<int>(type: "integer", nullable: true),
                     IsCompleted = table.Column<bool>(type: "boolean", nullable: false),
-                    CompletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     SessionExerciseId = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_set_logs", x => x.Id);
+                    table.PrimaryKey("PK_SetLogs", x => x.SetLogId);
                     table.ForeignKey(
-                        name: "FK_set_logs_session_exercises_SessionExerciseId",
+                        name: "FK_SetLogs_SessionExercises_SessionExerciseId",
                         column: x => x.SessionExerciseId,
-                        principalTable: "session_exercises",
-                        principalColumn: "Id",
+                        principalTable: "SessionExercises",
+                        principalColumn: "SessionExerciseId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_achievements_UserId",
-                table: "achievements",
+                name: "IX_Achievements_UserId",
+                table: "Achievements",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_calorie_calculations_UserId",
-                table: "calorie_calculations",
+                name: "IX_CalorieCalculations_UserId",
+                table: "CalorieCalculations",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_difficulty_levels_Name",
-                table: "difficulty_levels",
+                name: "IX_DifficultyLevels_Name",
+                table: "DifficultyLevels",
                 column: "Name",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_exercise_regions_Name",
-                table: "exercise_regions",
+                name: "IX_ExerciseRegions_Name",
+                table: "ExerciseRegions",
                 column: "Name",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_exercises_DifficultyLevelId",
-                table: "exercises",
+                name: "IX_Exercises_DifficultyLevelId",
+                table: "Exercises",
                 column: "DifficultyLevelId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_exercises_RegionId",
-                table: "exercises",
+                name: "IX_Exercises_RegionId",
+                table: "Exercises",
                 column: "RegionId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_plan_exercises_ExerciseId",
-                table: "plan_exercises",
+                name: "IX_PlanExercises_ExerciseId",
+                table: "PlanExercises",
                 column: "ExerciseId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_plan_exercises_WorkoutPlanId",
-                table: "plan_exercises",
+                name: "IX_PlanExercises_WorkoutPlanId",
+                table: "PlanExercises",
                 column: "WorkoutPlanId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_session_exercises_ExerciseId",
-                table: "session_exercises",
+                name: "IX_RegionalWorkoutExercises_ExerciseId",
+                table: "RegionalWorkoutExercises",
                 column: "ExerciseId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_session_exercises_PlanExerciseId",
-                table: "session_exercises",
+                name: "IX_RegionalWorkoutExercises_WorkoutId",
+                table: "RegionalWorkoutExercises",
+                column: "WorkoutId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RegionalWorkouts_ExerciseRegionId",
+                table: "RegionalWorkouts",
+                column: "ExerciseRegionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SessionExercises_ExerciseId",
+                table: "SessionExercises",
+                column: "ExerciseId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SessionExercises_PlanExerciseId",
+                table: "SessionExercises",
                 column: "PlanExerciseId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_session_exercises_WorkoutSessionId",
-                table: "session_exercises",
+                name: "IX_SessionExercises_WorkoutSessionId",
+                table: "SessionExercises",
                 column: "WorkoutSessionId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_set_logs_SessionExerciseId",
-                table: "set_logs",
+                name: "IX_SetLogs_SessionExerciseId",
+                table: "SetLogs",
                 column: "SessionExerciseId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_user_settings_UserId",
-                table: "user_settings",
-                column: "UserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_users_Email",
-                table: "users",
+                name: "IX_Users_Email",
+                table: "Users",
                 column: "Email",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_users_Username",
-                table: "users",
+                name: "IX_Users_Username",
+                table: "Users",
                 column: "Username",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_workout_plans_UserId",
-                table: "workout_plans",
+                name: "IX_UserSettings_UserId",
+                table: "UserSettings",
+                column: "UserId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkoutPlans_UserId",
+                table: "WorkoutPlans",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_workout_sessions_UserId",
-                table: "workout_sessions",
+                name: "IX_WorkoutSessions_UserId",
+                table: "WorkoutSessions",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_workout_sessions_WorkoutPlanId",
-                table: "workout_sessions",
+                name: "IX_WorkoutSessions_WorkoutPlanId",
+                table: "WorkoutSessions",
                 column: "WorkoutPlanId");
         }
 
@@ -434,46 +464,46 @@ namespace GymKeepWebApi.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "achievements");
+                name: "Achievements");
 
             migrationBuilder.DropTable(
-                name: "calorie_calculations");
+                name: "CalorieCalculations");
 
             migrationBuilder.DropTable(
-                name: "regional_workout_exercises");
+                name: "RegionalWorkoutExercises");
 
             migrationBuilder.DropTable(
-                name: "set_logs");
+                name: "SetLogs");
 
             migrationBuilder.DropTable(
-                name: "user_settings");
+                name: "UserSettings");
 
             migrationBuilder.DropTable(
-                name: "regional_workouts");
+                name: "RegionalWorkouts");
 
             migrationBuilder.DropTable(
-                name: "session_exercises");
+                name: "SessionExercises");
 
             migrationBuilder.DropTable(
-                name: "plan_exercises");
+                name: "PlanExercises");
 
             migrationBuilder.DropTable(
-                name: "workout_sessions");
+                name: "WorkoutSessions");
 
             migrationBuilder.DropTable(
-                name: "exercises");
+                name: "Exercises");
 
             migrationBuilder.DropTable(
-                name: "workout_plans");
+                name: "WorkoutPlans");
 
             migrationBuilder.DropTable(
-                name: "difficulty_levels");
+                name: "DifficultyLevels");
 
             migrationBuilder.DropTable(
-                name: "exercise_regions");
+                name: "ExerciseRegions");
 
             migrationBuilder.DropTable(
-                name: "users");
+                name: "Users");
         }
     }
 }
