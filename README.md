@@ -1,182 +1,179 @@
-Harika, ASP.NET Web API projeniz (`GymKeepWebApi`) için gelişmiş ve detaylı bir README.md dosyası taslağı aşağıdadır. Bunu projenizin kök dizinine `README.md` olarak kaydedebilirsiniz.
-
-# GymKeepWebApi - Antrenman Takip Uygulaması API
+# GymKeepWebApi - Workout Tracking Application API
 
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL-yellow.svg)](https://opensource.org/licenses/GPL-3.0)
 ![.NET Core](https://img.shields.io/badge/.NET-8.0-blueviolet)
 ![Entity Framework Core](https://img.shields.io/badge/EF%20Core-8.0-blue)
 
-## Uyarı
+## Warning
 
-**Bu proje, Atatürk Üniversitesi Bilişim Sistemleri ve Teknolojileri Bölümü'nün İleri Programlama dersi kapsamında, vize sınavı için geliştirilmiştir. Projeyi bu bağlamda değerlendirmenizi rica ederiz.**
+**This project was developed for the Advanced Programming course midterm exam within the Department of Information Systems and Technologies at Atatürk University. Please evaluate the project within this context.**
 
-## Açıklama
+## Description
 
-Bu depo, GymKeep mobil veya web uygulaması için backend hizmetlerini sağlayan ASP.NET Core Web API projesini içerir. Kullanıcı yönetimi, egzersiz kataloğu, antrenman planları, seans takibi, kalori hesaplama ve daha fazlası için RESTful endpoint'ler sunar.
+This repository contains the ASP.NET Core Web API project providing backend services for the GymKeep mobile or web application. It offers RESTful endpoints for user management, exercise catalog, workout plans, session tracking, calorie calculation, and more.
 
-## İçindekiler
+## Table of Contents
 
-- [GymKeepWebApi - Antrenman Takip Uygulaması API](#gymkeepwebapi---antrenman-takip-uygulaması-api)
-  - [Uyarı](#uyarı)
-  - [Açıklama](#açıklama)
-  - [İçindekiler](#i̇çindekiler)
-  - [Özellikler](#özellikler)
-  - [Kullanılan Teknolojiler](#kullanılan-teknolojiler)
-  - [Proje Yapısı](#proje-yapısı)
-  - [Kurulum ve Başlatma](#kurulum-ve-başlatma)
-    - [Gereksinimler](#gereksinimler)
-    - [Kurulum Adımları](#kurulum-adımları)
-    - [Veritabanı Kurulumu](#veritabanı-kurulumu)
-  - [Uygulamayı Çalıştırma](#uygulamayı-çalıştırma)
-    - [Geliştirme Ortamı](#geliştirme-ortamı)
-    - [Üretim Ortamı (Genel Bakış)](#üretim-ortamı-genel-bakış)
-  - [API Endpointleri](#api-endpointleri)
+- [GymKeepWebApi - Workout Tracking Application API](#gymkeepwebapi---workout-tracking-application-api)
+  - [Warning](#warning)
+  - [Description](#description)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Technologies Used](#technologies-used)
+  - [Project Structure](#project-structure)
+  - [Setup and Initialization](#setup-and-initialization)
+    - [Prerequisites](#prerequisites)
+    - [Setup Steps](#setup-steps)
+    - [Database Setup](#database-setup)
+  - [Running the Application](#running-the-application)
+    - [Development Environment](#development-environment)
+    - [Production Environment (Overview)](#production-environment-overview)
+  - [API Endpoints](#api-endpoints)
     - [Swagger / OpenAPI](#swagger--openapi)
-    - [Temel Endpoint Grupları](#temel-endpoint-grupları)
-    - [Örnek İstekler](#örnek-i̇stekler)
-  - [Veritabanı](#veritabanı)
+    - [Core Endpoint Groups](#core-endpoint-groups)
+    - [Example Requests](#example-requests)
+  - [Database](#database)
     - [Entity Framework Core Migrations](#entity-framework-core-migrations)
-    - [Veritabanı Şeması](#veritabanı-şeması)
-  - [Yapılandırma](#yapılandırma)
-  - [Güvenlik Hususları](#güvenlik-hususları)
-  - [Katkıda Bulunma](#katkıda-bulunma)
-  - [Lisans](#lisans)
+    - [Database Schema](#database-schema)
+  - [Configuration](#configuration)
+  - [Contributing](#contributing)
+  - [License](#license)
 
-## Özellikler
+## Features
 
-*   **Kullanıcı Yönetimi:** Kayıt olma, giriş yapma, kullanıcı bilgilerini alma/güncelleme/silme.
-*   **Egzersiz Kataloğu:** Egzersizleri, zorluk seviyelerini ve hedef bölgelerini listeleme, detaylarını görme.
-*   **Antrenman Planları:** Kullanıcıya özel antrenman planları oluşturma, listeleme, güncelleme, silme.
-*   **Plan Egzersizleri:** Planlara egzersiz ekleme, çıkarma, set/tekrar bilgilerini yönetme.
-*   **Antrenman Seansları:** Gerçekleşen antrenman seanslarını kaydetme, listeleme, detaylandırma.
-*   **Seans Egzersizleri:** Bir seans sırasında yapılan egzersizleri kaydetme.
-*   **Set Logları:** Seanslardaki her bir setin detaylarını (ağırlık, tekrar, tamamlanma durumu) kaydetme.
-*   **Kalori Hesaplama:** Kullanıcı verilerine göre TDEE ve hedefe yönelik kalori hesaplamalarını kaydetme/gösterme.
-*   **Başarılar (Achievements):** Kullanıcıların kazandığı başarıları yönetme.
-*   **Bölgesel Antrenmanlar:** Önceden tanımlanmış bölgesel antrenman şablonlarını yönetme.
-*   **Kullanıcı Ayarları:** Kullanıcıya özel uygulama ayarlarını (tema, bildirimler vb.) yönetme.
+*   **User Management:** Registration, login, fetching/updating/deleting user information.
+*   **Exercise Catalog:** Listing exercises, difficulty levels, and target regions, viewing details.
+*   **Workout Plans:** Creating, listing, updating, deleting user-specific workout plans.
+*   **Plan Exercises:** Adding/removing exercises to/from plans, managing set/rep information.
+*   **Workout Sessions:** Recording, listing, and detailing actual workout sessions.
+*   **Session Exercises:** Recording exercises performed during a session.
+*   **Set Logs:** Recording details of each set within a session (weight, reps, completion status).
+*   **Calorie Calculation:** Saving/displaying TDEE and goal-oriented calorie calculations based on user data.
+*   **Achievements:** Managing user achievements.
+*   **Regional Workouts:** Managing predefined regional workout templates.
+*   **User Settings:** Managing user-specific application settings (theme, notifications, etc.).
 
-## Kullanılan Teknolojiler
+## Technologies Used
 
-*   **.NET 8** (veya kullandığınız sürüm): Backend platformu.
-*   **ASP.NET Core Web API:** RESTful API oluşturmak için framework.
-*   **Entity Framework Core 8** (veya kullandığınız sürüm): Veritabanı etkileşimi için ORM (Object-Relational Mapper).
-    *   **Code-First Yaklaşımı:** Veritabanı şeması C# model sınıflarından oluşturulur.
-    *   **Migrations:** Veritabanı şeması değişikliklerini yönetmek için kullanılır.
-*   **C#:** Ana programlama dili.
-*   **RESTful Prensipleri:** API tasarımı için.
-*   **JSON:** Veri alışverişi formatı.
-*   **Swagger (OpenAPI):** API dokümantasyonu ve testi için kullanılır (ASP.NET Core ile entegre).
-*   **Veritabanı:** (Projenizin kullandığı veritabanını belirtin, örn: PostgreSQL, SQL Server, SQLite).
-*   **(Opsiyonel) JWT (JSON Web Token):** Güvenli kimlik doğrulama ve yetkilendirme için önerilir (Mevcut kodda parola yönetimi GÜVENLİ DEĞİLDİR, iyileştirme gerektirir).
-*   **(Opsiyonel) AutoMapper veya Mapster:** DTO ve Entity dönüşümleri için kullanılabilir.
+*   **.NET 8** (or the version you are using): Backend platform.
+*   **ASP.NET Core Web API:** Framework for building RESTful APIs.
+*   **Entity Framework Core 8** (or the version you are using): ORM (Object-Relational Mapper) for database interaction.
+    *   **Code-First Approach:** Database schema is generated from C# model classes.
+    *   **Migrations:** Used to manage database schema changes.
+*   **C#:** Primary programming language.
+*   **RESTful Principles:** For API design.
+*   **JSON:** Data exchange format.
+*   **Swagger (OpenAPI):** Used for API documentation and testing (integrated with ASP.NET Core).
+*   **Database:** (Specify the database used in your project, e.g., PostgreSQL, SQL Server, SQLite).
+*   **(Optional) JWT (JSON Web Token):** Recommended for secure authentication and authorization (Current password management is NOT SECURE and requires improvement).
+*   **(Optional) AutoMapper or Mapster:** Can be used for DTO and Entity transformations.
 
-## Proje Yapısı
+## Project Structure
 
-Proje, sorumlulukları ayırmak amacıyla standart bir ASP.NET Core Web API yapısını takip eder:
+The project follows a standard ASP.NET Core Web API structure to separate concerns:
 
 GymKeepWebApi/
-├── Controllers/        # API endpoint'lerini içeren Controller sınıfları (UserController, WorkoutPlanController vb.)
-├── Data/               # Veri erişim katmanı
-│   ├── MyDbContext.cs  # Entity Framework Core veritabanı bağlamı
-│   └── Migrations/     # EF Core veritabanı geçiş dosyaları
-├── Dtos/               # Data Transfer Object (Veri Aktarım Nesneleri) sınıfları (API istek/yanıtları için)
-├── Models/             # Veritabanı varlıklarını (Entity) temsil eden C# sınıfları (User, Exercise vb.)
+├── Controllers/        # Controller classes containing API endpoints (UserController, WorkoutPlanController, etc.)
+├── Data/               # Data access layer
+│   ├── MyDbContext.cs  # Entity Framework Core database context
+│   └── Migrations/     # EF Core database migration files
+├── Dtos/               # Data Transfer Object classes (for API requests/responses)
+├── Models/             # C# classes representing database entities (User, Exercise, etc.)
 ├── Properties/
-│   └── launchSettings.json # Geliştirme ortamı başlatma ayarları
-├── appsettings.json    # Ana yapılandırma dosyası (bağlantı dizeleri vb.)
-├── Program.cs          # Uygulamanın giriş noktası, servislerin ve middleware'in yapılandırıldığı yer
-└── GymKeepWebApi.csproj # Proje dosyası
+│   └── launchSettings.json # Development environment launch settings
+├── appsettings.json    # Main configuration file (connection strings, etc.)
+├── Program.cs          # Application entry point, configuration of services and middleware
+└── GymKeepWebApi.csproj # Project file
 
-## Kurulum ve Başlatma
+## Setup and Initialization
 
-### Gereksinimler
+### Prerequisites
 
-*   **.NET SDK 8.0** (veya projenizin hedeflediği sürüm) - [https://dotnet.microsoft.com/download](https://dotnet.microsoft.com/download)
-*   **Bir Veritabanı Sunucusu:** (Kullandığınız veritabanını belirtin, örn: PostgreSQL, SQL Server, SQL Server Express)
-*   **IDE veya Metin Düzenleyici:** Visual Studio 2022, Visual Studio Code veya JetBrains Rider.
-*   **(Opsiyonel) Git:** Versiyon kontrolü için.
+*   **.NET SDK 8.0** (or the version targeted by your project) - [https://dotnet.microsoft.com/download](https://dotnet.microsoft.com/download)
+*   **A Database Server:** (Specify the database you are using, e.g., PostgreSQL, SQL Server, SQL Server Express)
+*   **IDE or Text Editor:** Visual Studio 2022, Visual Studio Code, or JetBrains Rider.
+*   **(Optional) Git:** For version control.
 
-### Kurulum Adımları
+### Setup Steps
 
-1.  **Depoyu Klonlayın:**
+1.  **Clone the Repository:**
     ```bash
-    git clone https://github.com/kullanici_adiniz/GymKeepWebApi.git
+    git clone https://github.com/your_username/GymKeepWebApi.git
     cd GymKeepWebApi
     ```
-2.  **NuGet Paketlerini Geri Yükleyin:**
+2.  **Restore NuGet Packages:**
     ```bash
     dotnet restore
     ```
 
-### Veritabanı Kurulumu
+### Database Setup
 
-1.  **Veritabanı Oluşturun:** Seçtiğiniz veritabanı sunucusunda (örn: PostgreSQL, SQL Server) `GymKeepDb` (veya istediğiniz bir isimde) adında boş bir veritabanı oluşturun.
-2.  **Bağlantı Dizesini Ayarlayın:**
-    *   `appsettings.Development.json` dosyasını açın (yoksa `appsettings.json`'ı kopyalayıp oluşturun).
-    *   `ConnectionStrings` bölümünde, `DefaultConnection` değerini kendi veritabanı sunucunuza ve oluşturduğunuz veritabanına göre güncelleyin.
-        *   **Örnek (SQL Server):** `"DefaultConnection": "Server=SUNUCU_ADINIZ;Database=GymKeepDb;User ID=KULLANICI_ADINIZ;Password=SIFRENIZ;TrustServerCertificate=True;"`
-        *   **Örnek (PostgreSQL):** `"DefaultConnection": "Host=localhost;Database=GymKeepDb;Username=postgres;Password=SIFRENIZ;"`
-3.  **Veritabanı Şemasını Uygulayın (EF Core Migrations):**
-    *   Projenin kök dizininde bir terminal veya komut istemi açın.
-    *   Aşağıdaki komutu çalıştırarak EF Core Migrations ile veritabanı şemasını oluşturun/güncelleyin:
+1.  **Create the Database:** Create an empty database named `GymKeepDb` (or your preferred name) on your chosen database server (e.g., PostgreSQL, SQL Server).
+2.  **Set the Connection String:**
+    *   Open the `appsettings.Development.json` file (if it doesn't exist, create one by copying `appsettings.json`).
+    *   In the `ConnectionStrings` section, update the `DefaultConnection` value according to your database server and the database you created.
+        *   **Example (SQL Server):** `"DefaultConnection": "Server=YOUR_SERVER_NAME;Database=GymKeepDb;User ID=YOUR_USER_ID;Password=YOUR_PASSWORD;TrustServerCertificate=True;"`
+        *   **Example (PostgreSQL):** `"DefaultConnection": "Host=localhost;Database=GymKeepDb;Username=postgres;Password=YOUR_PASSWORD;"`
+3.  **Apply the Database Schema (EF Core Migrations):**
+    *   Open a terminal or command prompt in the project's root directory.
+    *   Run the following command to create/update the database schema using EF Core Migrations:
         ```bash
         dotnet ef database update
         ```
-    *   Bu komut, `Data/Migrations` klasöründeki geçiş dosyalarını veritabanına uygulayacaktır.
+    *   This command will apply the migration files from the `Data/Migrations` folder to your database.
 
-## Uygulamayı Çalıştırma
+## Running the Application
 
-### Geliştirme Ortamı
+### Development Environment
 
-1.  **Visual Studio:** Projeyi Visual Studio'da açın ve `https` profilini seçerek başlatın (Genellikle F5).
-2.  **VS Code veya Terminal:**
+1.  **Visual Studio:** Open the project in Visual Studio and start it by selecting the `https` profile (Usually F5).
+2.  **VS Code or Terminal:**
     ```bash
     dotnet run --launch-profile https
     ```
-    (veya `http` profili için `--launch-profile http`)
+    (or `--launch-profile http` for the http profile)
 
-Uygulama varsayılan olarak `launchSettings.json` dosyasında belirtilen URL'lerde (örn: `https://localhost:7091` ve `http://localhost:5091`) çalışmaya başlayacaktır.
+The application will start listening on the URLs specified in the `launchSettings.json` file by default (e.g., `https://localhost:7091` and `http://localhost:5091`).
 
-### Üretim Ortamı (Genel Bakış)
+### Production Environment (Overview)
 
-Üretim ortamında çalıştırmak için:
+To run in a production environment:
 
-1.  Uygulamayı yayınlayın: `dotnet publish -c Release -o ./publish`
-2.  Yayınlanan dosyaları bir sunucuya (Azure App Service, IIS, Linux sunucusu vb.) dağıtın.
-3.  Üretim ortamı için `appsettings.Production.json` dosyasını veya ortam değişkenlerini kullanarak veritabanı bağlantı dizesini ve diğer hassas ayarları yapılandırın.
-4.  Uygulamayı bir web sunucusu (Kestrel, IIS, Nginx, Apache) arkasında çalıştırın ve **HTTPS'i zorunlu kılın**.
+1.  Publish the application: `dotnet publish -c Release -o ./publish`
+2.  Deploy the published files to a server (Azure App Service, IIS, Linux server, etc.).
+3.  Configure the database connection string and other sensitive settings using `appsettings.Production.json` or environment variables for the production environment.
+4.  Run the application behind a web server (Kestrel, IIS, Nginx, Apache) and **enforce HTTPS**.
 
-## API Endpointleri
+## API Endpoints
 
 ### Swagger / OpenAPI
 
-API endpoint'lerini keşfetmek ve test etmek için Swagger UI'ı kullanabilirsiniz. Uygulama çalışırken tarayıcınızda aşağıdaki adrese gidin:
+You can explore and test the API endpoints using the Swagger UI. While the application is running, navigate to the following address in your browser:
 
-`/swagger` (örn: `https://localhost:7091/swagger`)
+`/swagger` (e.g., `https://localhost:7091/swagger`)
 
-### Temel Endpoint Grupları
+### Core Endpoint Groups
 
-*   `/api/User`: Kullanıcı işlemleri (kayıt, giriş, profil).
-*   `/api/Exercise`: Egzersiz listeleme, detay görme.
-*   `/api/ExerciseRegion`: Egzersiz bölgelerini listeleme.
-*   `/api/DifficultyLevel`: Zorluk seviyelerini listeleme.
-*   `/api/users/{userId}/WorkoutPlan`: Kullanıcıya ait antrenman planı işlemleri (CRUD).
-*   `/api/users/{userId}/WorkoutPlan/{planId}/Exercises`: Bir plana egzersiz ekleme/çıkarma/güncelleme.
-*   `/api/users/{userId}/WorkoutSession`: Kullanıcıya ait antrenman seansı işlemleri (CRUD).
-*   `/api/users/{userId}/WorkoutSession/{sessionId}/exercises`: Bir seansa egzersiz ekleme/çıkarma/güncelleme.
-*   `/api/users/{userId}/WorkoutSession/{sessionId}/exercises/{sessionExerciseId}/setlogs`: Bir seans egzersizine set logu ekleme/çıkarma/güncelleme/listeleme.
-*   `/api/CalorieCalculation`: Kalori hesaplama işlemleri.
-*   `/api/UserSetting`: Kullanıcı ayarları işlemleri.
-*   *(Diğer Controller'lar için benzer endpoint'ler)*
+*   `/api/User`: User operations (register, login, profile).
+*   `/api/Exercise`: List exercises, view details.
+*   `/api/ExerciseRegion`: List exercise regions.
+*   `/api/DifficultyLevel`: List difficulty levels.
+*   `/api/users/{userId}/WorkoutPlan`: User's workout plan operations (CRUD).
+*   `/api/users/{userId}/WorkoutPlan/{planId}/Exercises`: Add/remove/update exercises in a plan.
+*   `/api/users/{userId}/WorkoutSession`: User's workout session operations (CRUD).
+*   `/api/users/{userId}/WorkoutSession/{sessionId}/exercises`: Add/remove/update exercises in a session.
+*   `/api/users/{userId}/WorkoutSession/{sessionId}/exercises/{sessionExerciseId}/setlogs`: Add/remove/update/list set logs for a session exercise.
+*   `/api/CalorieCalculation`: Calorie calculation operations.
+*   `/api/UserSetting`: User settings operations.
+*   *(Similar endpoints for other controllers)*
 
-### Örnek İstekler
+### Example Requests
 
-**1. Kullanıcı Kaydı:**
+**1. User Registration:**
 
-*   **Metot:** `POST`
+*   **Method:** `POST`
 *   **URL:** `/api/User/register`
-*   **Gövde (Body - application/json):**
+*   **Body (application/json):**
     ```json
     {
       "username": "testuser",
@@ -184,33 +181,33 @@ API endpoint'lerini keşfetmek ve test etmek için Swagger UI'ı kullanabilirsin
       "password": "SecurePassword123"
     }
     ```
-*   **Başarılı Yanıt:** `201 Created` (Gövdede `UserResponseDto` döner)
+*   **Success Response:** `201 Created` (Returns `UserResponseDto` in the body)
 
-**2. Kullanıcı Girişi:**
+**2. User Login:**
 
-*   **Metot:** `POST`
+*   **Method:** `POST`
 *   **URL:** `/api/User/login`
-*   **Gövde (Body - application/json):**
+*   **Body (application/json):**
     ```json
     {
       "username": "testuser",
       "password": "SecurePassword123"
     }
     ```
-*   **Başarılı Yanıt:** `200 OK` (Gövdede `UserResponseDto` döner)
-    **UYARI:** Mevcut kodda parola doğrulaması güvenli değildir!
+*   **Success Response:** `200 OK` (Returns `UserResponseDto` in the body)
+    **WARNING:** Password verification in the current code is not secure!
 
-**3. Kullanıcının Planlarını Listeleme:**
+**3. List User's Plans:**
 
-*   **Metot:** `GET`
-*   **URL:** `/api/users/1/WorkoutPlan` (Örnek: userId=1)
-*   **Başarılı Yanıt:** `200 OK` (Gövdede `WorkoutPlan` listesi döner)
+*   **Method:** `GET`
+*   **URL:** `/api/users/1/WorkoutPlan` (Example: userId=1)
+*   **Success Response:** `200 OK` (Returns a list of `WorkoutPlan` in the body)
 
-**4. Plana Egzersiz Ekleme:**
+**4. Add Exercise to Plan:**
 
-*   **Metot:** `POST`
-*   **URL:** `/api/users/1/WorkoutPlan/5/Exercises` (Örnek: userId=1, planId=5)
-*   **Gövde (Body - application/json):**
+*   **Method:** `POST`
+*   **URL:** `/api/users/1/WorkoutPlan/5/Exercises` (Example: userId=1, planId=5)
+*   **Body (application/json):**
     ```json
     {
       "exerciseId": 10,
@@ -220,83 +217,59 @@ API endpoint'lerini keşfetmek ve test etmek için Swagger UI'ı kullanabilirsin
       "orderInPlan": 1
     }
     ```
-*   **Başarılı Yanıt:** `201 Created` (Gövdede oluşturulan `PlanExercise` döner)
+*   **Success Response:** `201 Created` (Returns the created `PlanExercise` in the body)
 
-## Veritabanı
+## Database
 
 ### Entity Framework Core Migrations
 
-Bu proje, veritabanı şemasını yönetmek için EF Core Migrations kullanır.
+This project uses EF Core Migrations to manage the database schema.
 
-*   **Yeni Migration Ekleme:** Model sınıflarında değişiklik yaptıktan sonra yeni bir migration oluşturmak için:
+*   **Adding a New Migration:** After making changes to the model classes, create a new migration:
     ```bash
-    dotnet ef migrations add MigrationAdi -p GymKeepWebApi.csproj -s GymKeepWebApi.csproj
+    dotnet ef migrations add MigrationName -p GymKeepWebApi.csproj -s GymKeepWebApi.csproj
     ```
-*   **Veritabanını Güncelleme:** Oluşturulan migration'ları veritabanına uygulamak için:
+*   **Updating the Database:** Apply the pending migrations to the database:
     ```bash
     dotnet ef database update
     ```
-*   **Belirli Bir Migration'a Dönme:**
+*   **Reverting to a Specific Migration:**
     ```bash
-    dotnet ef database update OncekiMigrationAdi
+    dotnet ef database update PreviousMigrationName
     ```
-*   **Migration'ı Kaldırma:** Son eklenen migration'ı geri almak için:
+*   **Removing a Migration:** Revert the last applied migration:
     ```bash
     dotnet ef migrations remove
     ```
 
-Tüm migration dosyaları `Data/Migrations` klasöründe bulunur.
+All migration files are located in the `Data/Migrations` folder.
 
-### Veritabanı Şeması
+### Database Schema
 
-Veritabanı şeması, `Models` klasöründeki entity sınıfları ve `MyDbContext` içindeki `OnModelCreating` yapılandırmaları tarafından tanımlanır. İlişkiler, kısıtlamalar ve indeksler burada belirtilmiştir. `database_schema.sql` dosyası (varsa), şemanın bir SQL temsilini içerebilir.
+The database schema is defined by the entity classes in the `Models` folder and the configurations in `MyDbContext`'s `OnModelCreating` method. Relationships, constraints, and indexes are specified there. The `database_schema.sql` file (if present) might contain an SQL representation of the schema.
 
-## Yapılandırma
+## Configuration
 
-Uygulamanın temel yapılandırması `appsettings.json` dosyasında bulunur. Geliştirme, Staging ve Üretim ortamları için sırasıyla `appsettings.Development.json`, `appsettings.Staging.json` ve `appsettings.Production.json` dosyaları kullanılabilir. Ortam değişkenleri de yapılandırmayı geçersiz kılmak için kullanılabilir.
+The application's main configuration is in the `appsettings.json` file. Specific files like `appsettings.Development.json`, `appsettings.Staging.json`, and `appsettings.Production.json` can be used for different environments. Environment variables can also be used to override configuration settings.
 
-Anahtar yapılandırmalar:
+Key configurations:
 
-*   **`ConnectionStrings:DefaultConnection`**: Veritabanı bağlantı dizesi.
-*   **`Logging`**: Uygulamanın loglama seviyeleri ve hedefleri.
-*   **(Eklenebilir)** `JwtSettings`: JWT (JSON Web Token) ayarları (Secret Key, Issuer, Audience vb.).
+*   **`ConnectionStrings:DefaultConnection`**: Database connection string.
+*   **`Logging`**: Logging levels and providers for the application.
+*   **(Addable)** `JwtSettings`: JWT (JSON Web Token) settings (Secret Key, Issuer, Audience, etc.).
 
-## Güvenlik Hususları
+## Contributing
 
-*   🚨 **Parola Yönetimi:** **MEVCUT KODDA PAROLALAR GÜVENLİ BİR ŞEKİLDE SAKLANMAMAKTADIR VE DOĞRULANMAMAKTADIR!** Parolalar asla düz metin olarak saklanmamalıdır. Güçlü bir hashing algoritması (örn: Argon2, bcrypt, PBKDF2) ile salt kullanılarak hash'lenmeli ve sadece hash değeri veritabanında saklanmalıdır. Giriş sırasında da gelen parola aynı salt ile hash'lenip veritabanındaki hash ile karşılaştırılmalıdır.
-*   **Kimlik Doğrulama ve Yetkilendirme:** API endpoint'lerini korumak için **JWT (JSON Web Token)** tabanlı kimlik doğrulama ve yetkilendirme mekanizması eklenmelidir. Kullanıcı giriş yaptıktan sonra bir token üretilmeli ve korumalı endpoint'lere yapılan isteklerde bu token `Authorization: Bearer <token>` başlığı ile gönderilmelidir. Rol bazlı veya policy bazlı yetkilendirme de eklenebilir.
-*   **HTTPS:** Tüm iletişim **HTTPS** üzerinden yapılmalıdır. Geliştirme ortamında `UseHttpsRedirection()` middleware'i kullanılır. Üretim ortamında ters proxy (Nginx, Apache vb.) veya hosting sağlayıcısı üzerinden HTTPS zorlaması yapılmalıdır.
-*   **CORS (Cross-Origin Resource Sharing):** Eğer API, farklı bir domain'de çalışan bir web uygulamasından (örn: Flutter Web) çağrılacaksa, `Program.cs` içinde CORS politikaları doğru şekilde yapılandırılmalıdır (`AddCors`, `UseCors`). Sadece güvenilen origin'lere izin verilmelidir.
-*   **Input Validation:** Gelen istek verileri (DTO'lar) sunucu tarafında doğrulanmalıdır. `[ApiController]` attribute'u ve DTO'lardaki Data Annotations (`[Required]`, `[StringLength]`, `[Range]` vb.) temel doğrulamayı sağlar. Daha karmaşık iş kuralları için ek doğrulama gerekebilir. SQL Injection gibi saldırıları önlemek için Entity Framework Core gibi ORM'ler parametreli sorgular kullandığından genellikle güvenlidir, ancak ham SQL sorguları kullanılıyorsa dikkatli olunmalıdır.
-*   **Hata Yönetimi:** Hassas hata detayları (stack trace vb.) üretim ortamında istemciye gönderilmemelidir. Global bir hata işleyici (exception handler middleware) kullanarak hatalar loglanmalı ve istemciye genel bir hata mesajı döndürülmelidir.
-*   **Rate Limiting ve Throttling:** Kötü niyetli kullanımı veya aşırı yüklenmeyi önlemek için API endpoint'lerine hız sınırlaması eklenebilir.
+If you wish to contribute, please follow these steps:
 
-## Katkıda Bulunma
+1.  Fork the repository.
+2.  Create a new branch for your feature or bug fix (`git checkout -b feature/new-feature` or `git checkout -b bugfix/fix-bug`).
+3.  Make your changes and commit them (`git commit -m 'Add new feature'`).
+4.  Push your branch to the origin (`git push origin feature/new-feature`).
+5.  Create a Pull Request (PR).
 
-Katkıda bulunmak isterseniz, lütfen aşağıdaki adımları izleyin:
+Please adhere to coding standards and document your changes clearly.
 
-1.  Depoyu Fork'layın.
-2.  Yeni bir özellik veya hata düzeltmesi için ayrı bir dal (branch) oluşturun (`git checkout -b ozellik/yeni-ozellik` veya `git checkout -b hata/hata-duzeltmesi`).
-3.  Değişikliklerinizi yapın ve Commit'leyin (`git commit -m 'Yeni özellik eklendi'`).
-4.  Dalınızı Origin'e Push'layın (`git push origin ozellik/yeni-ozellik`).
-5.  Bir Pull Request (PR) oluşturun.
+## License
 
-Lütfen kodlama standartlarına uyun ve değişikliklerinizi açıklayıcı bir şekilde belgeleyin.
-
-## Lisans
-
-Bu proje [GPL-3.0 Lisansı](LICENSE) altında lisanslanmıştır. Daha fazla bilgi için `LICENSE` dosyasına bakın.
-
-**Açıklamalar ve Öneriler:**
-
-1.  **Yer Tutucuları Güncelleyin:**
-    *   `.NET Sürümü`, `EF Core Sürümü`
-    *   `Kullanılan Teknolojiler` bölümünde **veritabanınızı** belirtin.
-    *   `Kurulum` bölümündeki **bağlantı dizesi örneklerini** kendi veritabanınıza göre uyarlayın.
-    *   `Katkıda Bulunma` bölümündeki depo URL'sini (`kullanici_adiniz/GymKeepWebApi`) kendi URL'nizle değiştirin.
-    *   `Lisans` bölümünü ve varsa `LICENSE` dosyasının adını projenizin lisansına göre ayarlayın (MIT yaygın bir seçenektir).
-2.  **Güvenlik Uyarısı:** Parola yönetimi ile ilgili güvenlik uyarısı çok önemlidir. Bu sorunu çözene kadar README'de belirgin bir şekilde durmalıdır. JWT implementasyonunu planlıyorsanız bunu da belirtebilirsiniz.
-3.  **Detaylandırma:** İhtiyaca göre belirli bölümleri daha da detaylandırabilirsiniz. Örneğin, belirli bir Controller'ın tüm endpoint'lerini listeleyebilir veya daha fazla örnek istek ekleyebilirsiniz.
-4.  **Görseller:** Proje yapısını veya Swagger arayüzünü gösteren ekran görüntüleri eklemek README'yi daha anlaşılır kılabilir.
-5.  **Türkçe/İngilizce:** Tamamen Türkçe yazdım, ancak teknik terimlerin İngilizce karşılıklarını da korumaya çalıştım. İhtiyaca göre İngilizce'ye çevirebilir veya karma kullanabilirsiniz.
-6.  **Swagger Linki:** Uygulamanızın canlı bir demosu veya test ortamı varsa, Swagger linkini doğrudan README'ye ekleyebilirsiniz.
+This project is licensed under the [GPL-3.0 License](LICENSE). See the `LICENSE` file for more details.
